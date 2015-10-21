@@ -418,7 +418,7 @@ public class PolygonTexture {
         }
 
         /**
-         * Source scale lets you zoom in and out on the texture without changing the size of the polygon.
+         * Source scale lets you setZoom in and out on the texture without changing the size of the polygon.
          *
          * @return the source scale.
          */
@@ -427,7 +427,7 @@ public class PolygonTexture {
         }
 
         /**
-         * Source scale lets you zoom in and out on the texture without changing the size of the polygon.
+         * Source scale lets you setZoom in and out on the texture without changing the size of the polygon.
          *
          * @param sourceScale the source scale.
          * @return this for chaining.
@@ -551,7 +551,7 @@ public class PolygonTexture {
          * also look like it is closer.
          *
          * @param scale how much you want the polygon to be scaled.
-         * @return
+         * @return the scale of this PolygonTexture
          */
         public PolygonTexture setScale(float scale) {
                 this.scale = scale;
