@@ -28,3 +28,4 @@ I have modified these libraries a little bit to make them work with GWT.
 # How to
 For now you must copy the source code from git if you want to try it.
 
+Here is an example to get started: [PrettyPaintDemo](core/src/org/prettypaint/test/PrettyPaintDemo.java)
