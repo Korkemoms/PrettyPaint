@@ -13,7 +13,7 @@ to set up and use.
 * Merge the outlines and align the textures of overlapping polygons.
 * Simple shadows or glow(just wider and less opaque outlines drawn behind)
 * Frustum culling
-* Background(s)
+* Draw background(s)    (super messy source code)
 
 ![Unmerged and unaligned. ](https://s3.eu-central-1.amazonaws.com/prettypaint/default.png "Unmerged and unaligned")
 ![Merged and aligned.](https://s3.eu-central-1.amazonaws.com/prettypaint/merged+and+aligned.png "Merged and aligned")
