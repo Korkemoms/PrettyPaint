@@ -4,7 +4,7 @@ PrettyPaint is for drawing pretty polygons in <a href="https://libgdx.badlogicga
 ![Screenshot of some PrettyPaint polygons.](https://s3.eu-central-1.amazonaws.com/prettypaint/PrettyPaintScreenshot.jpg "PrettyPaint polygons")
 
 # Description
-PrettyPaint is a small library for drawing polygons with texture filling and anti-aliased outlines. It is supposed to be easy and quick 
+PrettyPaint by Andreas Modahl is a small library for drawing polygons with texture filling and anti-aliased outlines. It is supposed to be easy and quick 
 to set up and use. 
 
 <b>Here are some of the things it can do:</b>
