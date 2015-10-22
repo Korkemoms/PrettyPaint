@@ -94,6 +94,7 @@ public class PolygonTexture {
 
         /**
          * With texture angle you can rotate the texture without rotating the edges of the polygon.
+         *
          * @param textureAngleRad the angle of the texture in radians.
          */
         public void setTextureAngleRad(float textureAngleRad) {
@@ -203,22 +204,22 @@ public class PolygonTexture {
                         if (frustum.overlaps(cullingArea))
                                 timeOfLastRender = now;
 
-                                batch.drawTexture(pr,
-                                        position.x,
-                                        position.y,
-                                        regionBounds.width,
-                                        regionBounds.height,
-                                        scale,
-                                        scale,
-                                        angleRad + textureAngleRad,
-                                        regionBounds.x / textureWidth,
-                                        regionBounds.y / textureHeight,
-                                        actualSourceTranslation.x,
-                                        actualSourceTranslation.y,
-                                        srcWidth,
-                                        srcHeight,
-                                        tmpColorAsFloatBits
-                                );
+                        batch.drawTexture(pr,
+                                position.x,
+                                position.y,
+                                regionBounds.width,
+                                regionBounds.height,
+                                scale,
+                                scale,
+                                angleRad + textureAngleRad,
+                                regionBounds.x / textureWidth,
+                                regionBounds.y / textureHeight,
+                                actualSourceTranslation.x,
+                                actualSourceTranslation.y,
+                                srcWidth,
+                                srcHeight,
+                                tmpColorAsFloatBits
+                        );
                 }
                 return this;
         }
@@ -270,6 +271,8 @@ public class PolygonTexture {
         }
 
         /**
+         * The given region should be square, otherwise it will not look seamless. I hope to fix
+         * this soon.
          * The texture region should contain a seamless texture.
          * <p>
          * Use a {@link com.badlogic.gdx.graphics.g2d.TextureAtlas} to manage your texture regions.
@@ -409,7 +412,8 @@ public class PolygonTexture {
          * @return this for chaining.
          */
         public PolygonTexture alignTexture(float extraTranslationX, float extraTranslationY) {
-                Vector2 v = RenderUtil.polygonCentroid(vertices);
+                Vector2 v = new Vector2(position);
+                v.rotateRad(-angleRad - textureAngleRad);
 
                 v.add(extraTranslationX, extraTranslationY);
 
@@ -418,7 +422,7 @@ public class PolygonTexture {
         }
 
         /**
-         * Source scale lets you setZoom in and out on the texture without changing the size of the polygon.
+         * Source scale lets you zoom in and out on the texture without changing the size of the polygon.
          *
          * @return the source scale.
          */
@@ -427,7 +431,7 @@ public class PolygonTexture {
         }
 
         /**
-         * Source scale lets you setZoom in and out on the texture without changing the size of the polygon.
+         * Source scale lets you zoom in and out on the texture without changing the size of the polygon.
          *
          * @param sourceScale the source scale.
          * @return this for chaining.
@@ -551,7 +555,7 @@ public class PolygonTexture {
          * also look like it is closer.
          *
          * @param scale how much you want the polygon to be scaled.
-         * @return the scale of this PolygonTexture
+         * @return
          */
         public PolygonTexture setScale(float scale) {
                 this.scale = scale;

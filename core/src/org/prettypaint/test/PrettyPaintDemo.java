@@ -110,6 +110,9 @@ public class PrettyPaintDemo extends ApplicationAdapter implements InputProcesso
                 polygonBatch.end();
         }
 
+
+        // Everything below here is just for controlling the camera
+
         @Override
         public void resize(int width, int height) {
 
