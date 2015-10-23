@@ -49,9 +49,9 @@ public class PrettyPaintDemo extends ApplicationAdapter implements InputProcesso
 
 
         PrettyPolygonBatch polygonBatch;
-        TexturePolygon textureDrawer;
-        OutlinePolygon shadowDrawer;
-        OutlinePolygon outlineDrawer;
+        TexturePolygon texturePolygon;
+        OutlinePolygon shadowPolygon;
+        OutlinePolygon outlinePolygon;
 
         @Override
         public void create() {
@@ -76,24 +76,24 @@ public class PrettyPaintDemo extends ApplicationAdapter implements InputProcesso
                 polygonBatch = new PrettyPolygonBatch();
 
 
-                outlineDrawer = new OutlinePolygon();
-                outlineDrawer.setVertices(vertices);
-                outlineDrawer.setColor(Color.WHITE);
+                outlinePolygon = new OutlinePolygon();
+                outlinePolygon.setVertices(vertices);
+                outlinePolygon.setColor(Color.WHITE);
 
 
-                shadowDrawer = new OutlinePolygon();
-                shadowDrawer.setDrawInside(false);
-                shadowDrawer.setVertices(vertices);
-                shadowDrawer.setColor(new Color(0, 0, 0, 0.5f));
-                shadowDrawer.setHalfWidth(outlineDrawer.getHalfWidth() * 5);
+                shadowPolygon = new OutlinePolygon();
+                shadowPolygon.setDrawInside(false);
+                shadowPolygon.setVertices(vertices);
+                shadowPolygon.setColor(new Color(0, 0, 0, 0.5f));
+                shadowPolygon.setHalfWidth(outlinePolygon.getHalfWidth() * 5);
 
 
                 Texture texture = new Texture("badlogic.jpg");
                 texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Linear);
 
-                textureDrawer = new TexturePolygon();
-                textureDrawer.setTextureRegion(new TextureRegion(texture));
-                textureDrawer.setVertices(vertices);
+                texturePolygon = new TexturePolygon();
+                texturePolygon.setTextureRegion(new TextureRegion(texture));
+                texturePolygon.setVertices(vertices);
 
         }
 
@@ -104,9 +104,9 @@ public class PrettyPaintDemo extends ApplicationAdapter implements InputProcesso
 
 
                 polygonBatch.begin(camera);
-                textureDrawer.draw(polygonBatch);
-                shadowDrawer.draw(polygonBatch);
-                outlineDrawer.draw(polygonBatch);
+                texturePolygon.draw(polygonBatch);
+                shadowPolygon.draw(polygonBatch);
+                outlinePolygon.draw(polygonBatch);
                 polygonBatch.end();
         }
 
