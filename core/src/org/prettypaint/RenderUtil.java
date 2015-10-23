@@ -408,4 +408,23 @@ public class RenderUtil {
                 return result.set(getTextureAlignmentConstantX(region),
                         getTextureAlignmentConstantY(region));
         }
+
+        /**
+         * This is a public class because GWT doesn't want to compile otherwise.
+         */
+        public static class Triangle {
+
+                // coordinates
+                public final Vector2 a;
+                public final Vector2 b;
+                public final Vector2 c;
+
+
+                public Triangle(Vector2 a, Vector2 b, Vector2 c) {
+                        this.a = a;
+                        this.b = b;
+                        this.c = c;
+                }
+
+        }
 }
