@@ -33,47 +33,73 @@ import com.badlogic.gdx.utils.Array;
 
 
 /**
- * Draws anti aliased polygon edges.
+ * Uses triangle strips to draw anti aliased polygon edges.
+ * Use together with {@link PrettyPolygonBatch} to draw things.
  *
  * @author Andreas
  */
 public class OutlinePolygon implements PrettyPolygon {
-
+        /** A vertex that is given by the user of this class. */
         protected static final int VERTEX_TYPE_USER = 1;
+
+        /**
+         * An auxiliary vertex that is needed to create the triangle strips.
+         * Each user vertex is associated with just one aux vertex.
+         */
         protected static final int VERTEX_TYPE_AUX = 0;
 
 
-        private final Vector2 position = new Vector2();
         private final Array<Vector2> vertices = new Array<Vector2>(true, 1, Vector2.class);
+        private Array<Vector2> verticesRotatedAndTranslated = new Array<Vector2>(true, 4, Vector2.class);
+
         private final AuxVertexFinder auxVertexFinder = new AuxVertexFinder();
-        private final Vector2 tmp = new Vector2(), tmp1 = new Vector2(), tmp2 = new Vector2(), tmp3 = new Vector2();
+        private final Vector2 tmpVector2 = new Vector2(), tmp1 = new Vector2(), tmp2 = new Vector2(), tmp3 = new Vector2();
         private final Rectangle tmpRectangle = new Rectangle();
-        private final Color debugFillGreen = new Color(0, 1, 0, 0.1f);
-        private final Color debugFillRed = new Color(1, 0, 0, 0.1f);
+        private final Color tmpColor = new Color();
+
+
         private final Rectangle frustum = new Rectangle();
 
         protected Array<OutlinePolygon> myParents = new Array<OutlinePolygon>();
         protected Array<OutlinePolygon> myChildren = new Array<OutlinePolygon>();
 
+        private final Vector2 position = new Vector2();
         private float angleRad = 0;
         private float weight = 1.25f;
         private Color color = new Color(Color.BLACK);
         private float scale = 1f;
-
         private float halfWidth = 0.02f;
+        private float opacity = 1;
+
+        /** Instead of computing things each time we change a setting we wait until we have to. */
         private boolean needsVertexUpdateBeforeRendering = false;
 
-        private Array<Vector2> verticesRotatedAndTranslated = new Array<Vector2>(true, 4, Vector2.class);
         private Array<BoundingBox> boundingBoxes = new Array<BoundingBox>();
+
         private PrettyPolygonBatch.DebugRenderer debugRenderer;
+        private final Color debugFillGreen = new Color(0, 1, 0, 0.1f);
+        private final Color debugFillRed = new Color(1, 0, 0, 0.1f);
+
+        /** Whether to draw the inside triangle strip. */
         private boolean drawInside = true;
+
+        /** Whether to draw the outside triangle strip. */
         private boolean drawOutside = true;
 
+        /** I am unsure which value is optimal. */
         private int verticesPerBoundingRectangle = 10;
 
+        /**
+         * Used by a parent to determine when it should draw. A parent draws
+         * after all its children has had their draw method called. A child
+         * is never drawn itself.
+         */
         private int drawInvocations = 0;
+
+        /** Whether to draw the last edge. */
         private boolean closedPolygon = true;
 
+        /** Used by a {@link PrettyPolygonBatch} to determine if it should stop debug rendering this polygon. */
         private long timeOfLastDrawCall;
 
         /** Draws anti aliased polygon edges. */
@@ -84,16 +110,23 @@ public class OutlinePolygon implements PrettyPolygon {
                                 debugDraw(shapeRenderer);
                         }
                 };
+        }
 
+        @Override
+        public OutlinePolygon setOpacity(float opacity) {
+                this.opacity = opacity;
+                return this;
+        }
 
+        @Override
+        public float getOpacity() {
+                return opacity;
         }
 
         @Override
         public long getTimeOfLastDrawCall() {
                 return timeOfLastDrawCall;
         }
-
-        int i = 0;
 
         /**
          * Draw the edges defined by {@link #setVertices(Array)}.
@@ -104,7 +137,6 @@ public class OutlinePolygon implements PrettyPolygon {
          * @return this for chaining.
          */
         public OutlinePolygon draw(PrettyPolygonBatch batch) {
-                if (i++ == 0) setDrawDebugInfo(batch, true);
 
                 if (myParents.size > 0) {
                         // if i have a parent i will not be drawn
@@ -132,6 +164,7 @@ public class OutlinePolygon implements PrettyPolygon {
                         if (scale <= 0) return this;
                         if (!drawInside && !drawOutside) return this;
 
+                        tmpColor.set(color).a *= opacity;
 
                         for (BoundingBox br : boundingBoxes) {
 
@@ -141,10 +174,10 @@ public class OutlinePolygon implements PrettyPolygon {
                                         // if we reached here we can draw
 
                                         if (drawInside) {
-                                                batch.drawOutline(br.insideVertexData, 0, br.insideVertexData.size, color, scale, angleRad, position.x, position.y, weight);
+                                                batch.drawOutline(br.insideVertexData, 0, br.insideVertexData.size, tmpColor, scale, angleRad, position.x, position.y, weight);
                                         }
                                         if (drawOutside) {
-                                                batch.drawOutline(br.outsideVertexData, 0, br.outsideVertexData.size, color, scale, angleRad, position.x, position.y, weight);
+                                                batch.drawOutline(br.outsideVertexData, 0, br.outsideVertexData.size, tmpColor, scale, angleRad, position.x, position.y, weight);
                                         }
                                 }
                         }
@@ -268,15 +301,15 @@ public class OutlinePolygon implements PrettyPolygon {
                                 int i = vertices.size - 1;
                                 Vector2 currentVertex = vertices.items[i];
 
-                                Vector2 currentAux = auxVertexFinder.getEndingAux(vertices, tmp, 0);
+                                Vector2 currentAux = auxVertexFinder.getEndingAux(vertices, tmpVector2, 0);
                                 add(currentVertex, VERTEX_TYPE_USER, vertexData);
                                 add(currentAux, VERTEX_TYPE_AUX, vertexData);
 
-                                currentAux = auxVertexFinder.getEndingAux(vertices, tmp, MathUtils.PI * 0.25f);
+                                currentAux = auxVertexFinder.getEndingAux(vertices, tmpVector2, MathUtils.PI * 0.25f);
                                 add(currentVertex, VERTEX_TYPE_USER, vertexData);
                                 add(currentAux, VERTEX_TYPE_AUX, vertexData);
 
-                                currentAux = auxVertexFinder.getEndingAux(vertices, tmp, MathUtils.PI * 0.5f);
+                                currentAux = auxVertexFinder.getEndingAux(vertices, tmpVector2, MathUtils.PI * 0.5f);
                                 add(currentVertex, VERTEX_TYPE_USER, vertexData);
                                 add(currentAux, VERTEX_TYPE_AUX, vertexData);
 
@@ -294,15 +327,15 @@ public class OutlinePolygon implements PrettyPolygon {
                                 int i = 0;
                                 Vector2 currentVertex = vertices.items[i];
 
-                                Vector2 currentAux = auxVertexFinder.getBeginningAux(vertices, tmp, 0);
+                                Vector2 currentAux = auxVertexFinder.getBeginningAux(vertices, tmpVector2, 0);
                                 insert(currentAux, VERTEX_TYPE_AUX, vertexData);
                                 insert(currentVertex, VERTEX_TYPE_USER, vertexData);
 
-                                currentAux = auxVertexFinder.getBeginningAux(vertices, tmp, MathUtils.PI * 0.25f);
+                                currentAux = auxVertexFinder.getBeginningAux(vertices, tmpVector2, MathUtils.PI * 0.25f);
                                 insert(currentAux, VERTEX_TYPE_AUX, vertexData);
                                 insert(currentVertex, VERTEX_TYPE_USER, vertexData);
 
-                                currentAux = auxVertexFinder.getBeginningAux(vertices, tmp, MathUtils.PI * 0.5f);
+                                currentAux = auxVertexFinder.getBeginningAux(vertices, tmpVector2, MathUtils.PI * 0.5f);
                                 insert(currentAux, VERTEX_TYPE_AUX, vertexData);
                                 insert(currentVertex, VERTEX_TYPE_USER, vertexData);
 
@@ -644,17 +677,17 @@ public class OutlinePolygon implements PrettyPolygon {
          */
         private Rectangle getCullingArea(Rectangle cullingArea, Rectangle boundingBox, float rotation, Vector2 translation, float scale) {
 
-                tmp.set(boundingBox.x, boundingBox.y).scl(scale).rotateRad(rotation).add(translation);
-                cullingArea.set(tmp.x, tmp.y, 0, 0);
+                tmpVector2.set(boundingBox.x, boundingBox.y).scl(scale).rotateRad(rotation).add(translation);
+                cullingArea.set(tmpVector2.x, tmpVector2.y, 0, 0);
 
-                tmp.set(boundingBox.x + boundingBox.width, boundingBox.y).scl(scale).rotateRad(rotation).add(translation);
-                cullingArea.merge(tmp);
+                tmpVector2.set(boundingBox.x + boundingBox.width, boundingBox.y).scl(scale).rotateRad(rotation).add(translation);
+                cullingArea.merge(tmpVector2);
 
-                tmp.set(boundingBox.x + boundingBox.width, boundingBox.y + boundingBox.height).scl(scale).rotateRad(rotation).add(translation);
-                cullingArea.merge(tmp);
+                tmpVector2.set(boundingBox.x + boundingBox.width, boundingBox.y + boundingBox.height).scl(scale).rotateRad(rotation).add(translation);
+                cullingArea.merge(tmpVector2);
 
-                tmp.set(boundingBox.x, boundingBox.y + boundingBox.height).scl(scale).rotateRad(rotation).add(translation);
-                cullingArea.merge(tmp);
+                tmpVector2.set(boundingBox.x, boundingBox.y + boundingBox.height).scl(scale).rotateRad(rotation).add(translation);
+                cullingArea.merge(tmpVector2);
 
                 return cullingArea;
         }
@@ -701,7 +734,7 @@ public class OutlinePolygon implements PrettyPolygon {
                         shapeRenderer.setColor(frustum.overlaps(cullingArea) ? debugFillGreen : debugFillRed);
                         shapeRenderer.rect(cullingArea.x, cullingArea.y, cullingArea.width, cullingArea.height);
 
-                        tmp.set(r.x, r.y).rotateRad(angleRad).add(position);
+                        tmpVector2.set(r.x, r.y).rotateRad(angleRad).add(position);
                         tmp1.set(r.x + r.width, r.y).rotateRad(angleRad).add(position);
                         tmp2.set(r.x + r.width, r.y + r.height).rotateRad(angleRad).add(position);
                         tmp3.set(r.x, r.y + r.height).rotateRad(angleRad).add(position);
@@ -709,26 +742,26 @@ public class OutlinePolygon implements PrettyPolygon {
                         shapeRenderer.set(ShapeRenderer.ShapeType.Line);
                         shapeRenderer.setColor(frustum.overlaps(cullingArea) ? Color.GREEN : Color.RED);
 
-                        shapeRenderer.line(tmp, tmp1);
+                        shapeRenderer.line(tmpVector2, tmp1);
                         shapeRenderer.line(tmp1, tmp2);
                         shapeRenderer.line(tmp2, tmp3);
-                        shapeRenderer.line(tmp3, tmp);
+                        shapeRenderer.line(tmp3, tmpVector2);
 
 
                 }
 
                 shapeRenderer.setColor(Color.BLUE);
                 for (BoundingBox br : boundingBoxes) {
-                        tmp.set(vertices.items[br.begin]);
-                        tmp.rotateRad(angleRad);
-                        tmp.add(position);
+                        tmpVector2.set(vertices.items[br.begin]);
+                        tmpVector2.rotateRad(angleRad);
+                        tmpVector2.add(position);
 
 
                         tmp1.set(vertices.items[(br.begin + br.count) % vertices.size]);
                         tmp1.rotateRad(angleRad);
                         tmp1.add(position);
 
-                        shapeRenderer.line(tmp, tmp1);
+                        shapeRenderer.line(tmpVector2, tmp1);
 
                 }
 
@@ -737,11 +770,11 @@ public class OutlinePolygon implements PrettyPolygon {
                         Array<Float> data = bb.insideVertexData;
                         for (int i = 0; i < data.size - 6; ) {
 
-                                tmp.x = data.items[i];
-                                tmp.y = data.items[i + 1];
-                                tmp.rotateRad(angleRad);
-                                tmp.scl(scale);
-                                tmp.add(position);
+                                tmpVector2.x = data.items[i];
+                                tmpVector2.y = data.items[i + 1];
+                                tmpVector2.rotateRad(angleRad);
+                                tmpVector2.scl(scale);
+                                tmpVector2.add(position);
 
                                 tmp1.x = data.items[i + 3];
                                 tmp1.y = data.items[i + 4];
@@ -750,15 +783,15 @@ public class OutlinePolygon implements PrettyPolygon {
                                 tmp1.add(position);
                                 i += 3;
 
-                                shapeRenderer.line(tmp, tmp1);
+                                shapeRenderer.line(tmpVector2, tmp1);
                         }
                         data = bb.outsideVertexData;
                         for (int i = 0; i < data.size - 6; ) {
-                                tmp.x = data.items[i];
-                                tmp.y = data.items[i + 1];
-                                tmp.rotateRad(angleRad);
-                                tmp.scl(scale);
-                                tmp.add(position);
+                                tmpVector2.x = data.items[i];
+                                tmpVector2.y = data.items[i + 1];
+                                tmpVector2.rotateRad(angleRad);
+                                tmpVector2.scl(scale);
+                                tmpVector2.add(position);
 
                                 tmp1.x = data.items[i + 3];
                                 tmp1.y = data.items[i + 4];
@@ -767,11 +800,40 @@ public class OutlinePolygon implements PrettyPolygon {
                                 tmp1.add(position);
                                 i += 3;
 
-                                shapeRenderer.line(tmp, tmp1);
+                                shapeRenderer.line(tmpVector2, tmp1);
                         }
 
                 }
         }
 
 
+        /**
+         * The BoundingBox is for dividing outlines into different parts.
+         * Each box can be rendered independently of the others,
+         * it is therefore convenient for frustum culling.
+         * <p>
+         * This is a public class because GWT doesn't want to compile otherwise.
+         */
+        public static class BoundingBox {
+                /** The actual bounding rectangle */
+                Rectangle rectangle;
+
+                /** Index of the first vertex that this bounding rectangle include. */
+                int begin;
+                /** The number of vertices that this bounding rectangle include. */
+                int count;
+
+                /** Triangle strip for the insideStrip part */
+                Array<Float> insideVertexData = new Array<Float>(true, 20, Float.class);
+
+                /** Triangle strip for the outside part. */
+                Array<Float> outsideVertexData = new Array<Float>(true, 20, Float.class);
+
+
+                BoundingBox(Rectangle r, int begin) {
+                        this.rectangle = r;
+                        this.begin = begin;
+                }
+
+        }
 }
