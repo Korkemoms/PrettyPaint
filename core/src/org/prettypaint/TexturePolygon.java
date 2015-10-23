@@ -39,13 +39,13 @@ import com.badlogic.gdx.utils.Array;
  *
  * @author Andreas
  */
-public class PolygonTexture {
+public class TexturePolygon implements PrettyPolygon {
 
         private final Vector2 position = new Vector2();
         /** The value given by the user. Alpha values: [0,1] */
-        private final Vector2 sourceTranslation = new Vector2();
+        private final Vector2 textureTranslation = new Vector2();
         /** Alpha values: [0,1] */
-        private final Vector2 actualSourceTranslation = new Vector2();
+        private final Vector2 actualTextureTranslation = new Vector2();
         private final short[] fillingTriangle = new short[]{0, 1, 2};
         private final Rectangle tmpRectangle = new Rectangle();
         private final Color tmpColor = new Color(1, 1, 1, 1);
@@ -55,11 +55,14 @@ public class PolygonTexture {
         private final DebugDrawer debugDrawer;
         private float angleRad = 0f;
         private float scale = 0.01f;
-        private float sourceScale = 1f;
+        private float textureScale = 1f;
         private float opacity = 1f;
         private TextureRegion textureRegion;
         /** Vertices defining the polygon being drawn. */
         private final Array<Vector2> vertices = new Array<Vector2>(true, 4, Vector2.class);
+
+        private Array<Vector2> verticesRotatedAndTranslated = new Array<Vector2>(true, 4, Vector2.class);
+
         /** used for frustum culling. */
         private Rectangle regionBounds;
         /** Only the opacity value is used. */
@@ -73,7 +76,7 @@ public class PolygonTexture {
 
 
         /** Made for drawing seamless textures on polygons. */
-        public PolygonTexture() {
+        public TexturePolygon() {
                 polygonRegions = new Array<PolygonRegion>(true, 4, PolygonRegion.class);
                 debugDrawer = new DebugDrawer() {
                         @Override
@@ -178,7 +181,8 @@ public class PolygonTexture {
          * @param batch Accumulates data and sends it in large portions to the gpu, instead of sending small portions more often.
          * @return this for chaining.
          */
-        public PolygonTexture draw(PolygonBatch batch) {
+        @Override
+        public TexturePolygon draw(PrettyPolygonBatch batch) {
                 if (batch == null) throw new RuntimeException("You must supply a batch.");
                 if (textureRegion == null) throw new RuntimeException("You must set a TextureRegion first.");
                 if (vertices == null) throw new RuntimeException("You must set the vertices first.");
@@ -190,10 +194,13 @@ public class PolygonTexture {
 
                 float srcWidth = textureRegion.getRegionWidth() / textureWidth;
                 float srcHeight = textureRegion.getRegionHeight() / textureHeight;
+                if(srcWidth!=srcHeight)
+                        throw new IllegalArgumentException("Texture width and height must be equal. :(");
+                float tex_width_and_height = srcHeight;
 
                 Rectangle frustum = batch.frustum;
 
-                float scale = this.scale / sourceScale;
+                float scale = this.scale / textureScale;
 
                 long now = System.currentTimeMillis();
                 for (int i = 0; i < polygonRegions.size; i++) {
@@ -214,10 +221,9 @@ public class PolygonTexture {
                                 angleRad + textureAngleRad,
                                 regionBounds.x / textureWidth,
                                 regionBounds.y / textureHeight,
-                                actualSourceTranslation.x,
-                                actualSourceTranslation.y,
-                                srcWidth,
-                                srcHeight,
+                                actualTextureTranslation.x,
+                                actualTextureTranslation.y,
+                                tex_width_and_height,
                                 tmpColorAsFloatBits
                         );
                 }
@@ -232,6 +238,7 @@ public class PolygonTexture {
          *
          * @return the vertices set by {@link #setVertices(Array)}. Do not modify.
          */
+        @Override
         public Array<Vector2> getVertices() {
                 return vertices;
         }
@@ -247,7 +254,8 @@ public class PolygonTexture {
          * @param vertices Vertices defining the polygon.
          * @return this for chaining.
          */
-        public PolygonTexture setVertices(Array<Vector2> vertices) {
+        @Override
+        public TexturePolygon setVertices(Array<Vector2> vertices) {
                 this.vertices.clear();
                 for (Vector2 v : vertices) {
                         this.vertices.add(new Vector2(v));
@@ -280,7 +288,7 @@ public class PolygonTexture {
          * @param textureRegion the region you wish to draw on the polygon defined by {@link #setVertices(Array)}.
          * @return this for chaining.
          */
-        public PolygonTexture setTextureRegion(TextureRegion textureRegion) {
+        public TexturePolygon setTextureRegion(TextureRegion textureRegion) {
                 if (textureRegion == null) throw new RuntimeException("TextureRegion can not be null. ");
 
 
@@ -303,7 +311,7 @@ public class PolygonTexture {
                         polygonRegions.clear();
                         polygonRegions.addAll(newRegions);
 
-                        setSourceTranslation(new Vector2(
+                        setTextureTranslation(new Vector2(
                                 (float) Math.random() * MathUtils.random() * RenderUtil.getMaximumTranslationX(textureRegion),
                                 (float) Math.random() * MathUtils.random() * RenderUtil.getMaximumTranslationY(textureRegion)));
                 }
@@ -317,7 +325,8 @@ public class PolygonTexture {
          * @param debugDraw Whether to draw debug information.
          * @return this for chaining.
          */
-        public PolygonTexture setDrawDebugInfo(PolygonBatch batch, boolean debugDraw) {
+        @Override
+        public TexturePolygon setDrawDebugInfo(PrettyPolygonBatch batch, boolean debugDraw) {
                 if (debugDraw) {
                         if (!batch.debugDrawingTasks.contains(debugDrawer, true))
                                 batch.debugDrawingTasks.add(debugDrawer);
@@ -334,7 +343,8 @@ public class PolygonTexture {
          * @param batch the batch you are using to draw.
          * @return this for chaining.
          */
-        public boolean isDrawingDebugInfo(PolygonBatch batch) {
+        @Override
+        public boolean isDrawingDebugInfo(PrettyPolygonBatch batch) {
                 return batch.debugDrawingTasks.contains(debugDrawer, true);
         }
 
@@ -343,24 +353,24 @@ public class PolygonTexture {
          * <p>
          * Do not modify. If you wish to change SourceTranslation use one of these methods:
          * -{@link #setSourceTranslation(float, float)}
-         * -{@link #setSourceTranslation(Vector2)}
+         * -{@link #setTextureTranslation(Vector2)}
          * -{@link #alignTexture(float, float)}
          * -{@link #alignTexture(Vector2)}
          *
          * @return the source translation. Do not modify.
          */
-        public Vector2 getSourceTranslation() {
-                return sourceTranslation;
+        public Vector2 getTextureTranslation() {
+                return textureTranslation;
         }
 
         /**
          * Source translation allows you move the texture around within the polygon.
          *
-         * @param sourceTranslation the source translation.
+         * @param textureTranslation the source translation.
          * @return this for chaining.
          */
-        public PolygonTexture setSourceTranslation(Vector2 sourceTranslation) {
-                return setSourceTranslation(sourceTranslation.x, sourceTranslation.y);
+        public TexturePolygon setTextureTranslation(Vector2 textureTranslation) {
+                return setSourceTranslation(textureTranslation.x, textureTranslation.y);
         }
 
         /**
@@ -370,54 +380,54 @@ public class PolygonTexture {
          * @param y y translation of source.
          * @return this for chaining.
          */
-        public PolygonTexture setSourceTranslation(float x, float y) {
+        public TexturePolygon setSourceTranslation(float x, float y) {
                 if (textureRegion == null)
                         throw new RuntimeException("You must set the textureRegion before using this method.");
 
-                this.sourceTranslation.set(x, y);
+                this.textureTranslation.set(x, y);
 
-                actualSourceTranslation.set(x, y);
-                actualSourceTranslation.scl(sourceScale);
+                actualTextureTranslation.set(x, y);
+                actualTextureTranslation.scl(textureScale);
 
-                actualSourceTranslation.x *= RenderUtil.getTextureAlignmentConstantX(textureRegion);
-                actualSourceTranslation.y *= RenderUtil.getTextureAlignmentConstantY(textureRegion);
+                actualTextureTranslation.x *= RenderUtil.getTextureAlignmentConstantX(textureRegion);
+                actualTextureTranslation.y *= RenderUtil.getTextureAlignmentConstantY(textureRegion);
 
-                actualSourceTranslation.x %= RenderUtil.getMaximumTranslationX(textureRegion);
-                actualSourceTranslation.y %= RenderUtil.getMaximumTranslationY(textureRegion);
+                actualTextureTranslation.x %= RenderUtil.getMaximumTranslationX(textureRegion);
+                actualTextureTranslation.y %= RenderUtil.getMaximumTranslationY(textureRegion);
 
 
                 return this;
         }
 
         /**
-         * This method lets you align the texture so that if two or more different {@link #PolygonTexture}'s are overlapping
-         * the texture still looks seamless. They must have the same scale and sourceScale for this to work.
+         * This method lets you align the texture so that if two or more different {@link #TexturePolygon}'s are overlapping
+         * the texture still looks seamless. They must have the same scale and textureScale for this to work.
          *
          * @param extraTranslation Extra translation allows you to move the texture around within the polygon.
-         *                         Use the same value for all the {@link #PolygonTexture}'s you wish to align.
+         *                         Use the same value for all the {@link #TexturePolygon}'s you wish to align.
          * @return this for chaining.
          */
-        public PolygonTexture alignTexture(Vector2 extraTranslation) {
+        public TexturePolygon alignTexture(Vector2 extraTranslation) {
                 return alignTexture(extraTranslation.x, extraTranslation.y);
         }
 
         /**
-         * This method lets you align the texture so that if two or more different {@link #PolygonTexture}'s are overlapping
-         * the texture still looks seamless. They must have the same scale and sourceScale for this to work.
+         * This method lets you align the texture so that if two or more different {@link #TexturePolygon}'s are overlapping
+         * the texture still looks seamless. They must have the same scale and textureScale for this to work.
          *
          * @param extraTranslationX Extra translation allows you to move the texture around within the polygon.
-         *                          Use the same value for all the {@link #PolygonTexture}'s  you wish to align.
+         *                          Use the same value for all the {@link #TexturePolygon}'s  you wish to align.
          * @param extraTranslationY Extra translation allows you to move the texture around within the polygon.
-         *                          Use the same value for all the {@link #PolygonTexture}'s you wish to align.
+         *                          Use the same value for all the {@link #TexturePolygon}'s you wish to align.
          * @return this for chaining.
          */
-        public PolygonTexture alignTexture(float extraTranslationX, float extraTranslationY) {
+        public TexturePolygon alignTexture(float extraTranslationX, float extraTranslationY) {
                 Vector2 v = new Vector2(position);
                 v.rotateRad(-angleRad - textureAngleRad);
 
                 v.add(extraTranslationX, extraTranslationY);
 
-                setSourceTranslation(v);
+                setTextureTranslation(v);
                 return this;
         }
 
@@ -426,18 +436,18 @@ public class PolygonTexture {
          *
          * @return the source scale.
          */
-        public float getSourceScale() {
-                return sourceScale;
+        public float getTextureScale() {
+                return textureScale;
         }
 
         /**
          * Source scale lets you zoom in and out on the texture without changing the size of the polygon.
          *
-         * @param sourceScale the source scale.
+         * @param textureScale the source scale.
          * @return this for chaining.
          */
-        public PolygonTexture setSourceScale(float sourceScale) {
-                this.sourceScale = sourceScale;
+        public TexturePolygon setTextureScale(float textureScale) {
+                this.textureScale = textureScale;
                 setTriangles(triangles);
                 return this;
         }
@@ -478,7 +488,7 @@ public class PolygonTexture {
          * @param opacity value in range 0 to 1. 0 is invisible, 1 is full visible.
          * @return this for chaining.
          */
-        public PolygonTexture setOpacity(float opacity) {
+        public TexturePolygon setOpacity(float opacity) {
                 if (opacity < 0 || opacity > 1)
                         throw new IllegalArgumentException(opacity + " is an invalid value for opacity. Set opacity in range 0 to 1.");
                 this.opacity = opacity;
@@ -495,6 +505,7 @@ public class PolygonTexture {
          *
          * @return The position. Do not modify. Use {@link #setPosition(Vector2)} to set position.
          */
+        @Override
         public Vector2 getPosition() {
                 return position;
         }
@@ -503,7 +514,8 @@ public class PolygonTexture {
          * @param position the position decides how much to translate the polygon(defined by {@link #setVertices(Array)}) before drawing it.
          * @return this for chaining.
          */
-        public PolygonTexture setPosition(Vector2 position) {
+        @Override
+        public TexturePolygon setPosition(Vector2 position) {
                 this.position.set(position);
                 return this;
         }
@@ -513,7 +525,8 @@ public class PolygonTexture {
          * @param y decides how much to vertically translate the polygon(defined by {@link #setVertices(Array)}) before drawing it.
          * @return this for chaining.
          */
-        public PolygonTexture setPosition(float x, float y) {
+        @Override
+        public TexturePolygon setPosition(float x, float y) {
                 this.position.set(x, y);
                 return this;
         }
@@ -523,6 +536,7 @@ public class PolygonTexture {
          *
          * @return how many radians the polygon is rotated.
          */
+        @Override
         public float getAngleRad() {
                 return angleRad;
         }
@@ -533,7 +547,8 @@ public class PolygonTexture {
          * @param angleRad how many radians to rotate the polygon.
          * @return this for chaining.
          */
-        public PolygonTexture setAngleRad(float angleRad) {
+        @Override
+        public TexturePolygon setAngleRad(float angleRad) {
                 this.angleRad = angleRad;
                 return this;
         }
@@ -545,6 +560,7 @@ public class PolygonTexture {
          *
          * @return how much the polygon is scaled.
          */
+        @Override
         public float getScale() {
                 return scale;
         }
@@ -555,9 +571,10 @@ public class PolygonTexture {
          * also look like it is closer.
          *
          * @param scale how much you want the polygon to be scaled.
-         * @return
+         * @return this for chaining.
          */
-        public PolygonTexture setScale(float scale) {
+        @Override
+        public TexturePolygon setScale(float scale) {
                 this.scale = scale;
                 return this;
         }
@@ -590,7 +607,7 @@ public class PolygonTexture {
 
                         float[] triangle = new float[6];
                         for (int j = 0; j < triangle.length; j++) {
-                                triangle[j] = (triangles[i++] / scale) * sourceScale;
+                                triangle[j] = (triangles[i++] / scale) * textureScale;
                         }
 
                         PolygonRegion polygonRegion = new PolygonRegion(
@@ -602,4 +619,15 @@ public class PolygonTexture {
                 }
         }
 
+        @Override
+        public Array<Vector2> getVerticesRotatedAndTranslated() {
+
+                for (int i = 0; i < vertices.size; i++) {
+                        Vector2 w = verticesRotatedAndTranslated.items[i];
+                        w.set(vertices.items[i]);
+                        w.rotateRad(angleRad);
+                        w.add(position);
+                }
+                return verticesRotatedAndTranslated;
+        }
 }

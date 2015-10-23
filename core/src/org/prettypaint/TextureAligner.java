@@ -4,12 +4,12 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 
 /**
- * Convenience class for aligning the textures of many {@link PolygonTexture}s.
+ * Convenience class for aligning the textures of many {@link TexturePolygon}s.
  */
 public class TextureAligner {
         private final Vector2 extraTranslation = new Vector2();
 
-        public void alignTextures(Array<PolygonTexture> polygonTextures) {
+        public void alignTextures(Array<TexturePolygon> polygonTextures) {
                 alignTextures(polygonTextures, true);
         }
 
@@ -19,14 +19,14 @@ public class TextureAligner {
          * @param textureAlwaysUpright whether to set the textures upright when calling {@link #alignTextures(Array)}.
          *                             If you set this value false the textures may not look aligned because they can have different angles.
          */
-        public void alignTextures(Array<PolygonTexture> polygonTextures, boolean textureAlwaysUpright) {
-                for (PolygonTexture polygonTexture : polygonTextures) {
+        public void alignTextures(Array<TexturePolygon> polygonTextures, boolean textureAlwaysUpright) {
+                for (TexturePolygon texturePolygon : polygonTextures) {
 
                         if (textureAlwaysUpright)
-                                polygonTexture.setTextureUprightForCurrentAngle();
+                                texturePolygon.setTextureUprightForCurrentAngle();
 
 
-                        polygonTexture.alignTexture(extraTranslation);
+                        texturePolygon.alignTexture(extraTranslation);
 
                 }
         }
@@ -36,12 +36,12 @@ public class TextureAligner {
          * @param polygonTextures the textures to align.
          * @param textureAngleRad the angle to rotate the textures before aligning them.
          */
-        public void alignTextures(Array<PolygonTexture> polygonTextures, float textureAngleRad) {
-                for (PolygonTexture polygonTexture : polygonTextures) {
+        public void alignTextures(Array<TexturePolygon> polygonTextures, float textureAngleRad) {
+                for (TexturePolygon texturePolygon : polygonTextures) {
 
-                        polygonTexture.setTextureAngleRad(textureAngleRad);
+                        texturePolygon.setTextureAngleRad(textureAngleRad);
 
-                        polygonTexture.alignTexture(extraTranslation);
+                        texturePolygon.alignTexture(extraTranslation);
                 }
         }
 

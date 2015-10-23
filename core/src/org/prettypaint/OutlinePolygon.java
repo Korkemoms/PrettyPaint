@@ -37,7 +37,11 @@ import com.badlogic.gdx.utils.Array;
  *
  * @author Andreas
  */
-public class PolygonOutline {
+public class OutlinePolygon implements PrettyPolygon{
+
+        protected static final int VERTEX_TYPE_USER = 1;
+        protected static final int VERTEX_TYPE_AUX = 0;
+
 
         private final Vector2 position = new Vector2();
         private final Array<Vector2> vertices = new Array<Vector2>(true, 1, Vector2.class);
@@ -48,10 +52,10 @@ public class PolygonOutline {
         private final Color debugFillRed = new Color(1, 0, 0, 0.1f);
         private final Rectangle frustum = new Rectangle();
 
-        protected Array<PolygonOutline> myParents = new Array<PolygonOutline>();
-        protected Array<PolygonOutline> myChildren = new Array<PolygonOutline>();
+        protected Array<OutlinePolygon> myParents = new Array<OutlinePolygon>();
+        protected Array<OutlinePolygon> myChildren = new Array<OutlinePolygon>();
 
-        private float rotation = 0;
+        private float angleRad = 0;
         private float weight = 1.25f;
         private Color color = new Color(Color.BLACK);
         private float scale = 1f;
@@ -65,17 +69,13 @@ public class PolygonOutline {
         private boolean drawInside = true;
         private boolean drawOutside = true;
 
-        private int stripVerticesPerVertex = 2;
-        private int dataPerStripVertex = 3;
-        private int dataPerVertex = stripVerticesPerVertex * dataPerStripVertex;
-
         private int verticesPerBoundingRectangle = 10;
 
         private int drawInvocations = 0;
         private boolean closedPolygon = true;
 
         /** Draws anti aliased polygon edges. */
-        public PolygonOutline() {
+        public OutlinePolygon() {
                 debugDrawer = new DebugDrawer() {
                         @Override
                         public void draw(ShapeRenderer shapeRenderer) {
@@ -87,17 +87,17 @@ public class PolygonOutline {
 
         /**
          * Draw the edges defined by {@link #setVertices(Array)}.
-         * If {@link OutlineMerger#mergeOutlines(Array, boolean)} has been used on this {@link PolygonOutline} then
-         * the draw method may just be redirected to this polygonOutline's parents.
+         * If {@link OutlineMerger#mergeOutlines(Array, boolean)} has been used on this {@link OutlinePolygon} then
+         * the draw method may just be redirected to this outlinePolygon's parents.
          *
          * @param batch Accumulates data and sends it in large portions to the gpu, instead of sending small portions more often.
          * @return this for chaining.
          */
-        public PolygonOutline draw(PolygonBatch batch) {
+        public OutlinePolygon draw(PrettyPolygonBatch batch) {
                 if (myParents.size > 0) {
                         // if i have a parent i will not be drawn
-                        for (PolygonOutline polygonOutline : myParents) {
-                                polygonOutline.draw(batch);
+                        for (OutlinePolygon outlinePolygon : myParents) {
+                                outlinePolygon.draw(batch);
                         }
                         return this;
                 }
@@ -122,16 +122,16 @@ public class PolygonOutline {
 
                         for (BoundingBox br : boundingBoxes) {
 
-                                Rectangle cullingArea = getCullingArea(tmpRectangle, br.rectangle, rotation, position, scale);
+                                Rectangle cullingArea = getCullingArea(tmpRectangle, br.rectangle, angleRad, position, scale);
 
                                 if (frustum.overlaps(cullingArea)) {
                                         // if we reached here we can draw
 
                                         if (drawInside) {
-                                                batch.renderOutlines(br.insideVertexData, 0, br.insideVertexData.size, color, scale, rotation, position.x, position.y, weight);
+                                                batch.drawOutline(br.insideVertexData, 0, br.insideVertexData.size, color, scale, angleRad, position.x, position.y, weight);
                                         }
                                         if (drawOutside) {
-                                                batch.renderOutlines(br.outsideVertexData, 0, br.outsideVertexData.size, color, scale, rotation, position.x, position.y, weight);
+                                                batch.drawOutline(br.outsideVertexData, 0, br.outsideVertexData.size, color, scale, angleRad, position.x, position.y, weight);
                                         }
                                 }
                         }
@@ -194,7 +194,6 @@ public class PolygonOutline {
                 Array<Vector2> vertices = this.vertices;
                 boolean drawInside = this.drawInside;
                 boolean drawOutside = this.drawOutside;
-                int dataPerVertex = this.dataPerVertex;
                 AuxVertexFinder auxVertexFinder = this.auxVertexFinder;
 
 
@@ -218,7 +217,6 @@ public class PolygonOutline {
 
                 Vector2 v1 = new Vector2();
 
-                float invisibleAlpha = getAlphaValue(false);
                 Array<Vector2> vertices = this.vertices;
                 boolean closedPolygon = this.closedPolygon;
                 Array<BoundingBox> boundingRectangles = this.boundingBoxes;
@@ -237,10 +235,9 @@ public class PolygonOutline {
 
                                 Vector2 currentVertex = vertices.items[k];
                                 Vector2 currentAux = auxVertexFinder.getAux(vertices, k);
-                                float edgeAlpha = getAlphaValue(true);
 
-                                add(currentVertex, edgeAlpha, vertexData);
-                                add(currentAux, invisibleAlpha, vertexData);
+                                add(currentVertex, VERTEX_TYPE_USER, vertexData);
+                                add(currentAux, VERTEX_TYPE_AUX, vertexData);
                         }
                 }
 
@@ -257,19 +254,18 @@ public class PolygonOutline {
 
                                 int i = vertices.size - 1;
                                 Vector2 currentVertex = vertices.items[i];
-                                float edgeAlpha = getAlphaValue(true);
 
                                 Vector2 currentAux = auxVertexFinder.getEndingAux(vertices, tmp, 0);
-                                add(currentVertex, edgeAlpha, vertexData);
-                                add(currentAux, invisibleAlpha, vertexData);
+                                add(currentVertex, VERTEX_TYPE_USER, vertexData);
+                                add(currentAux, VERTEX_TYPE_AUX, vertexData);
 
                                 currentAux = auxVertexFinder.getEndingAux(vertices, tmp, MathUtils.PI * 0.25f);
-                                add(currentVertex, edgeAlpha, vertexData);
-                                add(currentAux, invisibleAlpha, vertexData);
+                                add(currentVertex, VERTEX_TYPE_USER, vertexData);
+                                add(currentAux, VERTEX_TYPE_AUX, vertexData);
 
                                 currentAux = auxVertexFinder.getEndingAux(vertices, tmp, MathUtils.PI * 0.5f);
-                                add(currentVertex, edgeAlpha, vertexData);
-                                add(currentAux, invisibleAlpha, vertexData);
+                                add(currentVertex, VERTEX_TYPE_USER, vertexData);
+                                add(currentAux, VERTEX_TYPE_AUX, vertexData);
 
                         }
 
@@ -284,19 +280,18 @@ public class PolygonOutline {
 
                                 int i = 0;
                                 Vector2 currentVertex = vertices.items[i];
-                                float edgeAlpha = getAlphaValue(true);
 
                                 Vector2 currentAux = auxVertexFinder.getBeginningAux(vertices, tmp, 0);
-                                insert(currentAux, invisibleAlpha, vertexData);
-                                insert(currentVertex, edgeAlpha, vertexData);
+                                insert(currentAux, VERTEX_TYPE_AUX, vertexData);
+                                insert(currentVertex, VERTEX_TYPE_USER, vertexData);
 
                                 currentAux = auxVertexFinder.getBeginningAux(vertices, tmp, MathUtils.PI * 0.25f);
-                                insert(currentAux, invisibleAlpha, vertexData);
-                                insert(currentVertex, edgeAlpha, vertexData);
+                                insert(currentAux, VERTEX_TYPE_AUX, vertexData);
+                                insert(currentVertex, VERTEX_TYPE_USER, vertexData);
 
                                 currentAux = auxVertexFinder.getBeginningAux(vertices, tmp, MathUtils.PI * 0.5f);
-                                insert(currentAux, invisibleAlpha, vertexData);
-                                insert(currentVertex, edgeAlpha, vertexData);
+                                insert(currentAux, VERTEX_TYPE_AUX, vertexData);
+                                insert(currentVertex, VERTEX_TYPE_USER, vertexData);
 
                         }
                 }
@@ -412,7 +407,7 @@ public class PolygonOutline {
          * @param halfWidth half the width of the edges.
          * @return this for chaining.
          */
-        public PolygonOutline setHalfWidth(float halfWidth) {
+        public OutlinePolygon setHalfWidth(float halfWidth) {
                 this.halfWidth = halfWidth;
                 needsVertexUpdateBeforeRendering = true;
                 return this;
@@ -425,7 +420,7 @@ public class PolygonOutline {
          * @param drawInside whether to draw the insideStrip part of the lines.
          * @return this for chaining.
          */
-        public PolygonOutline setDrawInside(boolean drawInside) {
+        public OutlinePolygon setDrawInside(boolean drawInside) {
                 needsVertexUpdateBeforeRendering = true;
                 this.drawInside = drawInside;
                 return this;
@@ -448,7 +443,7 @@ public class PolygonOutline {
          * @param drawOutside whether to draw the outside part of the lines.
          * @return this for chaining.
          */
-        public PolygonOutline setDrawOutside(boolean drawOutside) {
+        public OutlinePolygon setDrawOutside(boolean drawOutside) {
                 needsVertexUpdateBeforeRendering = true;
                 this.drawOutside = drawOutside;
                 return this;
@@ -466,13 +461,13 @@ public class PolygonOutline {
 
         /**
          * When instantiating or changing settings some tasks may be scheduled to be
-         * done before the next {@link #draw(PolygonBatch)} call. If you wish you can call this
+         * done before the next {@link #draw(PrettyPolygonBatch)} call. If you wish you can call this
          * method to do these tasks right away. It can be a good idea to call this method after you are done configuring
          * this object, but before you exit your loading screen.
          *
          * @return this for chaining.
          */
-        public PolygonOutline doHeavyWorkIfNeeded() {
+        public OutlinePolygon doHeavyWorkIfNeeded() {
                 if (needsVertexUpdateBeforeRendering) {
                         needsVertexUpdateBeforeRendering = false;
 
@@ -483,49 +478,24 @@ public class PolygonOutline {
                 return this;
         }
 
-        /**
-         * Do not modify. If you want to change, translate, rotate or scale the polygon use
-         * {@link #setVertices(Array)}, {@link #setPosition(Vector2)}, {@link #setAngleRad(float)} or {@link #setScale(float)} respectively.
-         * <p>
-         * These vertices are not affected by scale.
-         *
-         * @return vertices rotated and translated. Do not modify.
-         */
+
         public Array<Vector2> getVerticesRotatedAndTranslated() {
 
                 for (int i = 0; i < vertices.size; i++) {
                         Vector2 w = verticesRotatedAndTranslated.items[i];
                         w.set(vertices.items[i]);
-                        w.rotateRad(rotation);
+                        w.rotateRad(angleRad);
                         w.add(position);
                 }
                 return verticesRotatedAndTranslated;
         }
 
-        /**
-         * Do not modify. If you want to change, translate, rotate or scale the polygon use
-         * {@link #setVertices(Array)}, {@link #setPosition(Vector2)}, {@link #setAngleRad(float)} or {@link #setScale(float)} respectively.
-         * <p>
-         * These vertices are not affected by scale.
-         *
-         * @return the vertices add by {@link #setVertices(Array)}. Do not modify.
-         */
+
         public Array<Vector2> getVertices() {
                 return vertices;
         }
 
-
-        /**
-         * Set the vertices of the polygon. The polygon can be self intersecting.
-         * <p>
-         * It is recommended that the centroid of these vertices is (0,0).
-         * <p>
-         * Given array is copied.
-         *
-         * @param vertices Vertices defining the polygon.
-         * @return this for chaining.
-         */
-        public final PolygonOutline setVertices(Array<Vector2> vertices) {
+        public final OutlinePolygon setVertices(Array<Vector2> vertices) {
 
                 needsVertexUpdateBeforeRendering = true;
 
@@ -543,14 +513,8 @@ public class PolygonOutline {
                 return this;
         }
 
-        /**
-         * When true draws the culling rectangles of the triangles.
-         *
-         * @param batch     The batch you are using to draw.
-         * @param debugDraw Whether to draw debug information.
-         * @return this for chaining.
-         */
-        public PolygonOutline setDrawDebugInfo(PolygonBatch batch, boolean debugDraw) {
+
+        public OutlinePolygon setDrawDebugInfo(PrettyPolygonBatch batch, boolean debugDraw) {
                 if (debugDraw) {
                         if (!batch.debugDrawingTasks.contains(debugDrawer, true))
                                 batch.debugDrawingTasks.add(debugDrawer);
@@ -561,19 +525,9 @@ public class PolygonOutline {
                 return this;
         }
 
-        /**
-         * Whether debug information is being drawn.
-         *
-         * @param batch the batch you are using to draw.
-         * @return this for chaining.
-         */
-        public boolean isDrawingDebugInfo(PolygonBatch batch) {
-                return batch.debugDrawingTasks.contains(debugDrawer, true);
-        }
 
-        private float getAlphaValue(boolean visible) {
-                if (visible) return 1;
-                else return 0;
+        public boolean isDrawingDebugInfo(PrettyPolygonBatch batch) {
+                return batch.debugDrawingTasks.contains(debugDrawer, true);
         }
 
         /** Set the data for one stripVertex. */
@@ -590,34 +544,28 @@ public class PolygonOutline {
                 vertexData.insert(0, vertex.x);
         }
 
-        /**
-         * @return the angle of the polygon in radians.
-         */
+
         public float getAngleRad() {
-                return rotation;
+                return angleRad;
         }
 
-        /**
-         * @param angleRad the angle of the polygon in radians.
-         * @return this for chaining.
-         */
-        public PolygonOutline setAngleRad(float angleRad) {
-                this.rotation = angleRad;
+
+        public OutlinePolygon setAngleRad(float angleRad) {
+                this.angleRad = angleRad;
                 return this;
         }
 
-        /**
-         * @return the position of the polygon.
-         */
+
         public Vector2 getPosition() {
                 return position;
         }
 
-        /**
-         * @param position the position of the polygon.
-         * @return this for chaining.
-         */
-        public PolygonOutline setPosition(Vector2 position) {
+        public OutlinePolygon setPosition(float x, float y) {
+                this.position.set(x,y);
+                return this;
+        }
+
+        public OutlinePolygon setPosition(Vector2 position) {
                 this.position.set(position);
                 return this;
         }
@@ -637,7 +585,7 @@ public class PolygonOutline {
          * @param weight the weight of the outline.
          * @return this for chaining.
          */
-        public PolygonOutline setWeight(float weight) {
+        public OutlinePolygon setWeight(float weight) {
                 this.weight = weight;
                 return this;
         }
@@ -657,27 +605,18 @@ public class PolygonOutline {
          * @param color the color of the edges.
          * @return this for chaining.
          */
-        public PolygonOutline setColor(Color color) {
+        public OutlinePolygon setColor(Color color) {
                 this.color = color;
                 return this;
         }
 
-        /**
-         * The scale scales everything.
-         *
-         * @return the scale of the polygon.
-         */
+
         public float getScale() {
                 return scale;
         }
 
-        /**
-         * The scale scales everything.
-         *
-         * @param scale the scale of the polygon.
-         * @return this for chaining.
-         */
-        public PolygonOutline setScale(float scale) {
+
+        public OutlinePolygon setScale(float scale) {
                 this.scale = scale;
                 return this;
         }
@@ -719,7 +658,7 @@ public class PolygonOutline {
          * @param closedPolygon whether the polygon should be closed.
          * @return this for chaining.
          */
-        public PolygonOutline setClosedPolygon(boolean closedPolygon) {
+        public OutlinePolygon setClosedPolygon(boolean closedPolygon) {
                 needsVertexUpdateBeforeRendering = true;
                 this.closedPolygon = closedPolygon;
                 return this;
@@ -740,16 +679,16 @@ public class PolygonOutline {
                 for (BoundingBox br : boundingBoxes) {
 
                         Rectangle r = br.rectangle;
-                        Rectangle cullingArea = getCullingArea(tmpRectangle, r, rotation, position, scale);
+                        Rectangle cullingArea = getCullingArea(tmpRectangle, r, angleRad, position, scale);
 
                         shapeRenderer.set(ShapeRenderer.ShapeType.Filled);
                         shapeRenderer.setColor(frustum.overlaps(cullingArea) ? debugFillGreen : debugFillRed);
                         shapeRenderer.rect(cullingArea.x, cullingArea.y, cullingArea.width, cullingArea.height);
 
-                        tmp.set(r.x, r.y).rotateRad(rotation).add(position);
-                        tmp1.set(r.x + r.width, r.y).rotateRad(rotation).add(position);
-                        tmp2.set(r.x + r.width, r.y + r.height).rotateRad(rotation).add(position);
-                        tmp3.set(r.x, r.y + r.height).rotateRad(rotation).add(position);
+                        tmp.set(r.x, r.y).rotateRad(angleRad).add(position);
+                        tmp1.set(r.x + r.width, r.y).rotateRad(angleRad).add(position);
+                        tmp2.set(r.x + r.width, r.y + r.height).rotateRad(angleRad).add(position);
+                        tmp3.set(r.x, r.y + r.height).rotateRad(angleRad).add(position);
 
                         shapeRenderer.set(ShapeRenderer.ShapeType.Line);
                         shapeRenderer.setColor(frustum.overlaps(cullingArea) ? Color.GREEN : Color.RED);
@@ -765,12 +704,12 @@ public class PolygonOutline {
                 shapeRenderer.setColor(Color.BLUE);
                 for (BoundingBox br : boundingBoxes) {
                         tmp.set(vertices.items[br.begin]);
-                        tmp.rotateRad(rotation);
+                        tmp.rotateRad(angleRad);
                         tmp.add(position);
 
 
                         tmp1.set(vertices.items[(br.begin + br.count) % vertices.size]);
-                        tmp1.rotateRad(rotation);
+                        tmp1.rotateRad(angleRad);
                         tmp1.add(position);
 
                         shapeRenderer.line(tmp, tmp1);

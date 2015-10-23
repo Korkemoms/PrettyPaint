@@ -4,7 +4,7 @@ import com.badlogic.gdx.graphics.VertexAttribute;
 import com.badlogic.gdx.graphics.VertexAttributes;
 
 /**
- * Shader used by {@link PolygonBatch} to render both textures and outlines. It uses branching in order
+ * Shader used by {@link PrettyPolygonBatch} to render both textures and outlines. It uses branching in order
  * to render textures on top of outlines and the other way around.
  */
 class Shader {
@@ -32,16 +32,16 @@ class Shader {
                 public static Attribute position = new Attribute("a_position", 2, VertexAttributes.Usage.Position);
 
                 /**
-                 * For outlines: the color of the outline.
-                 * For textures: 1st value is source scaling. 4th value is opacity.
+                 * For textures only the alpha value is used. For outlines the whole color is used.
                  */
-                public static Attribute colorOrScale = new Attribute("a_color", 4, VertexAttributes.Usage.ColorPacked);
+                public static Attribute colorOrJustOpacity = new Attribute("a_color", 4, VertexAttributes.Usage.ColorPacked);
 
                 /**
                  * For outlines: Ignored :(
-                 * For textures: The translation of the source texture. Alpha values between 0 and 1.
+                 * For textures: The origin such that when the {@link #position} given is (0,0) then the pixel
+                 * drawn is the pixel found at {@link #originInTexture} in the texture. Alpha values.
                  */
-                public static Attribute textureTranslation = new Attribute("a_texture_translation", 2, VertexAttributes.Usage.TextureCoordinates);
+                public static Attribute originInTexture = new Attribute("a_texture_origin", 2, VertexAttributes.Usage.TextureCoordinates);
 
                 /**
                  * The outlines: 1st value is boldness.
@@ -61,8 +61,8 @@ class Shader {
         }
 
         protected static final String outlineVertexBranch
-                = "v_color      = " + Attribute.colorOrScale + "                   ;\n"
-                + "float alpha  = " + Attribute.colorOrScale + "[3]                ;\n"
+                = "v_color      = " + Attribute.colorOrJustOpacity + "             ;\n"
+                + "float alpha  = " + Attribute.colorOrJustOpacity + "[3]          ;\n"
                 + "float weight = " + Attribute.sourcePositionOrBoldness + ".x     ;\n"
 
                 + "v_color[3]   =  weight*alpha*alpha                              ;\n"
@@ -76,9 +76,9 @@ class Shader {
         protected static final String textureVertexBranch
                 = "v_pos       = " + Attribute.sourcePositionOrBoldness + "        ;\n"
                 + "v_size      = " + Attribute.textureSizeAndShaderChooser + "     ;\n"
-                + "v_color     = " + Attribute.colorOrScale + "                    ;\n"
+                + "v_color     = " + Attribute.colorOrJustOpacity + "              ;\n"
                 //
-                + "v_texCoord0 = " + Attribute.textureTranslation + "              ;\n"
+                + "v_texCoord0 = " + Attribute.originInTexture + "                 ;\n"
                 + "gl_Position = u_worldView * " + Attribute.position + "          ;\n";
 
         protected static final String textureFragmentBranch
@@ -94,10 +94,10 @@ class Shader {
                 + "attribute vec4 " + Attribute.position + "                       ;\n"
                 //
                 // needed for outline branch
-                + "attribute vec4 " + Attribute.colorOrScale + "                   ;\n"
+                + "attribute vec4 " + Attribute.colorOrJustOpacity + "             ;\n"
                 //
                 // needed for texture branch
-                + "attribute vec2 " + Attribute.textureTranslation + "             ;\n"
+                + "attribute vec2 " + Attribute.originInTexture + "                ;\n"
                 + "attribute vec2 " + Attribute.sourcePositionOrBoldness + "       ;\n"
                 + "attribute float " + Attribute.textureSizeAndShaderChooser + "   ;\n"
                 //

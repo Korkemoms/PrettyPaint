@@ -27,7 +27,7 @@ public class OutlineMerger {
         }
 
 
-        public OutlineMerger setDrawDebugInfo(PolygonBatch batch, boolean debugDraw) {
+        public OutlineMerger setDrawDebugInfo(PrettyPolygonBatch batch, boolean debugDraw) {
                 if (debugDraw) {
                         if (!batch.debugDrawingTasks.contains(debugDrawer, true))
                                 batch.debugDrawingTasks.add(debugDrawer);
@@ -38,7 +38,7 @@ public class OutlineMerger {
                 return this;
         }
 
-        public boolean isDrawingDebugInfo(PolygonBatch batch) {
+        public boolean isDrawingDebugInfo(PrettyPolygonBatch batch) {
                 return batch.debugDrawingTasks.contains(debugDrawer, true);
         }
 
@@ -79,7 +79,7 @@ public class OutlineMerger {
                 }
         }
 
-        public void mergeOutlines(Array<PolygonOutline> toMerge, boolean verbose) {
+        public void mergeOutlines(Array<OutlinePolygon> toMerge, boolean verbose) {
                 if (toMerge.size == 0) return;
                 long begin = System.currentTimeMillis();
                 if (verbose) System.out.println("Auto outlining " + toMerge.size + " things");
@@ -90,7 +90,7 @@ public class OutlineMerger {
                 defaultClipper.clear();
 
                 for (int i = 0; i < toMerge.size; i++) {
-                        PolygonOutline or = toMerge.get(i);
+                        OutlinePolygon or = toMerge.get(i);
                         or.myParents.clear();
 
                         Path path = RenderUtil.convertToPath(or.getVerticesRotatedAndTranslated());
@@ -112,13 +112,13 @@ public class OutlineMerger {
 
                         Array<Vector2> vertices = RenderUtil.convertToVectors(path);
 
-                        Array<PolygonOutline> thingsInThisArea = new Array<PolygonOutline>(true, 4, PolygonOutline.class);
-                        for (PolygonOutline polygonOutline : toMerge) {
+                        Array<OutlinePolygon> thingsInThisArea = new Array<OutlinePolygon>(true, 4, OutlinePolygon.class);
+                        for (OutlinePolygon outlinePolygon : toMerge) {
 
-                                Array<Vector2> vertices1 = polygonOutline.getVerticesRotatedAndTranslated();
+                                Array<Vector2> vertices1 = outlinePolygon.getVerticesRotatedAndTranslated();
 
                                 if (RenderUtil.intersectEdges(vertices, vertices1)) {
-                                        thingsInThisArea.add(polygonOutline);
+                                        thingsInThisArea.add(outlinePolygon);
 
                                 }
                         }
@@ -128,11 +128,11 @@ public class OutlineMerger {
 
                         debug.add(vertices);
 
-                        PolygonOutline outlineParent = new PolygonOutline();
+                        OutlinePolygon outlineParent = new OutlinePolygon();
                         outlineParent.setVertices(vertices);
 
                         // just let the first one decide many of the properties of the parent
-                        PolygonOutline first = thingsInThisArea.first();
+                        OutlinePolygon first = thingsInThisArea.first();
                         outlineParent.setColor(first.getColor());
                         outlineParent.setDrawOutside(first.isOutsideDrawn());
                         outlineParent.setDrawInside(first.isInsideDrawn());
@@ -142,7 +142,7 @@ public class OutlineMerger {
                         outlineParent.setWeight(first.getWeight());
 
                         // link parent and children
-                        for (PolygonOutline child : thingsInThisArea) {
+                        for (OutlinePolygon child : thingsInThisArea) {
                                 outlineParent.myChildren.add(child);
                                 child.myParents.add(outlineParent);
                         }

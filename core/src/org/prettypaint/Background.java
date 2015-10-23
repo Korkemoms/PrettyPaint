@@ -37,7 +37,7 @@ import com.badlogic.gdx.utils.Array;
 /**
  * @author Andreas
  */
-public class BackgroundRenderer {
+public class Background {
 
         /**
          * You can modify this to set rotation. For some draw methods this value is ignored.
@@ -102,11 +102,11 @@ public class BackgroundRenderer {
 
         }
 
-        public BackgroundRenderer(TextureRegion textureRegion) {
+        public Background(TextureRegion textureRegion) {
                 this(textureRegion, 0.01f);
         }
 
-        public BackgroundRenderer(TextureRegion textureRegion, float baseScale) {
+        public Background(TextureRegion textureRegion, float baseScale) {
 
                 this.baseScale = baseScale;
                 setTextureRegion(textureRegion);
@@ -114,20 +114,19 @@ public class BackgroundRenderer {
         }
 
 
-        public void draw(PolygonBatch batch) {
+        public void draw(PrettyPolygonBatch batch) {
 
                 draw(batch, 1f, opacity);
         }
 
 
-        public void draw(PolygonBatch batch, float opacity) {
+        public void draw(PrettyPolygonBatch batch, float opacity) {
                 draw(batch, 1f, opacity);
         }
 
 
-        public void draw(PolygonBatch batch, float scale, float opacity) {
+        public void draw(PrettyPolygonBatch batch, float scale, float opacity) {
                 if (textureRegion == null) return;
-
 
 
                 scale *= baseScale;
@@ -141,6 +140,9 @@ public class BackgroundRenderer {
 
                 float srcWidth = textureRegion.getRegionWidth() / textureWidth;
                 float srcHeight = textureRegion.getRegionHeight() / textureHeight;
+                if (srcWidth != srcHeight)
+                        throw new IllegalArgumentException("Texture width and height must be equal. :(");
+                float tex_width_and_height = srcHeight;
 
                 Rectangle frustum = batch.frustum;
 
@@ -168,8 +170,7 @@ public class BackgroundRenderer {
                                         regionBounds.y / textureHeight,
                                         textureTranslation.x,
                                         textureTranslation.y,
-                                        srcWidth,
-                                        srcHeight,
+                                        tex_width_and_height,
                                         tmpColorAsFloatBits
                                 );
                 }
@@ -255,7 +256,6 @@ public class BackgroundRenderer {
         public TextureRegion getTextureRegion() {
                 return textureRegion;
         }
-
 
 
         private final Vector2 tmp = new Vector2();

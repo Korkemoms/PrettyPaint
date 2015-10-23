@@ -20,7 +20,7 @@ import java.util.List;
  */
 public class RenderUtil {
 
-        protected static final double scale = 1000000;
+        public static final double scale = 1000000;
 
         public static boolean intersectEdges(Array<Vector2> a, Array<Vector2> b) {
                 Vector2 q = new Vector2();
