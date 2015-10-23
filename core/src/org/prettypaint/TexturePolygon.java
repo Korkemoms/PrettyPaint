@@ -36,6 +36,7 @@ import com.badlogic.gdx.utils.Array;
 
 /**
  * Made for drawing seamless textures on polygons.
+ * Use together with {@link PrettyPolygonBatch} to draw things.
  *
  * @author Andreas
  */
@@ -54,8 +55,8 @@ public class TexturePolygon implements PrettyPolygon {
         private final Array<PolygonRegion> polygonRegions;
         private final PrettyPolygonBatch.DebugRenderer debugRenderer;
         private float angleRad = 0f;
-        private float scale = 0.01f;
-        private float textureScale = 1f;
+        private float scale = 1f;
+        private float textureScale = 0.01f;
         private float opacity = 1f;
         private TextureRegion textureRegion;
         /** Vertices defining the polygon being drawn. */
@@ -74,6 +75,7 @@ public class TexturePolygon implements PrettyPolygon {
         /** The last time */
         public long timeOfLastRender;
 
+        /** Used by a {@link PrettyPolygonBatch} to determine if it should stop debug rendering this polygon. */
         private long timeOfLastDrawCall;
 
 
@@ -174,6 +176,8 @@ public class TexturePolygon implements PrettyPolygon {
                 shapeRenderer.set(ShapeRenderer.ShapeType.Line);
                 shapeRenderer.setColor(Color.GREEN);
 
+                float scale = this.textureScale * this.scale;
+
                 for (PolygonRegion pr : polygonRegions) {
                         Rectangle cullingArea = tmpRectangle;
                         getCullingArea(cullingArea, pr, angleRad + textureAngleRad, position, scale);
@@ -181,6 +185,7 @@ public class TexturePolygon implements PrettyPolygon {
                 }
         }
 
+        long i = 0;
 
         /**
          * Draw texture on the polygon defined by {@link #setVertices(Array)}.
@@ -193,6 +198,10 @@ public class TexturePolygon implements PrettyPolygon {
                 if (batch == null) throw new RuntimeException("You must supply a batch.");
                 if (textureRegion == null) throw new RuntimeException("You must set a TextureRegion first.");
                 if (vertices == null) throw new RuntimeException("You must set the vertices first.");
+
+                if(i++==0){
+                        setDrawDebugInfo(batch,true);
+                }
 
                 Texture texture = textureRegion.getTexture();
 
@@ -209,13 +218,14 @@ public class TexturePolygon implements PrettyPolygon {
 
                 Rectangle frustum = batch.frustum;
 
-                float scale = this.scale / textureScale;
+                float scale = this.textureScale * this.scale;
 
                 long now = System.currentTimeMillis();
                 for (int i = 0; i < polygonRegions.size; i++) {
                         PolygonRegion pr = polygonRegions.items[i];
                         Rectangle cullingArea = tmpRectangle;
                         getCullingArea(cullingArea, pr, angleRad + textureAngleRad, position, scale);
+
 
                         if (frustum.overlaps(cullingArea))
                                 timeOfLastRender = now;
@@ -396,7 +406,7 @@ public class TexturePolygon implements PrettyPolygon {
                 this.textureTranslation.set(x, y);
 
                 actualTextureTranslation.set(x, y);
-                actualTextureTranslation.scl(textureScale);
+                actualTextureTranslation.scl(scale);
 
                 actualTextureTranslation.x *= RenderUtil.getTextureAlignmentConstantX(textureRegion);
                 actualTextureTranslation.y *= RenderUtil.getTextureAlignmentConstantY(textureRegion);
@@ -489,6 +499,7 @@ public class TexturePolygon implements PrettyPolygon {
         }
 
         /** @return the opacity. In range 0 to 1. 0 is invisible, 1 is full visible. */
+        @Override
         public float getOpacity() {
                 return opacity;
         }
@@ -497,6 +508,7 @@ public class TexturePolygon implements PrettyPolygon {
          * @param opacity value in range 0 to 1. 0 is invisible, 1 is full visible.
          * @return this for chaining.
          */
+        @Override
         public TexturePolygon setOpacity(float opacity) {
                 if (opacity < 0 || opacity > 1)
                         throw new IllegalArgumentException(opacity + " is an invalid value for opacity. Set opacity in range 0 to 1.");
@@ -616,7 +628,7 @@ public class TexturePolygon implements PrettyPolygon {
 
                         float[] triangle = new float[6];
                         for (int j = 0; j < triangle.length; j++) {
-                                triangle[j] = (triangles[i++] / scale) * textureScale;
+                                triangle[j] = (triangles[i++] / textureScale) * scale;
                         }
 
                         PolygonRegion polygonRegion = new PolygonRegion(
