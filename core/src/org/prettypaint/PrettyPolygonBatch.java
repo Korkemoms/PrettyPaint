@@ -445,11 +445,18 @@ public class PrettyPolygonBatch {
                 shapeRenderer.rect(frustum.x, frustum.y, frustum.width, frustum.height);
         }
 
+        /**
+         * A {@link PrettyPolygon} add a DebugRenderer to {@link #debugRendererArray}.
+         * It will then have its {@link #draw(ShapeRenderer)} method called after the
+         * batch is done drawing its normal things.
+         *
+         * This is a public class because GWT doesn't want to compile otherwise.
+         */
         public static class DebugRenderer {
 
                 public PrettyPolygon owner;
 
-                public DebugRenderer(PrettyPolygon owner){
+                public DebugRenderer(PrettyPolygon owner) {
                         this.owner = owner;
                 }
 
