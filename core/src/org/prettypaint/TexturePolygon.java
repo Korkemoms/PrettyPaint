@@ -185,8 +185,6 @@ public class TexturePolygon implements PrettyPolygon {
                 }
         }
 
-        long i = 0;
-
         /**
          * Draw texture on the polygon defined by {@link #setVertices(Array)}.
          *
@@ -198,10 +196,6 @@ public class TexturePolygon implements PrettyPolygon {
                 if (batch == null) throw new RuntimeException("You must supply a batch.");
                 if (textureRegion == null) throw new RuntimeException("You must set a TextureRegion first.");
                 if (vertices == null) throw new RuntimeException("You must set the vertices first.");
-
-                if(i++==0){
-                        setDrawDebugInfo(batch,true);
-                }
 
                 Texture texture = textureRegion.getTexture();
 
@@ -227,24 +221,24 @@ public class TexturePolygon implements PrettyPolygon {
                         getCullingArea(cullingArea, pr, angleRad + textureAngleRad, position, scale);
 
 
-                        if (frustum.overlaps(cullingArea))
+                        if (frustum.overlaps(cullingArea)) {
                                 timeOfLastRender = now;
-
-                        batch.drawTexture(pr,
-                                position.x,
-                                position.y,
-                                regionBounds.width,
-                                regionBounds.height,
-                                scale,
-                                scale,
-                                angleRad + textureAngleRad,
-                                regionBounds.x / textureWidth,
-                                regionBounds.y / textureHeight,
-                                actualTextureTranslation.x,
-                                actualTextureTranslation.y,
-                                tex_width_and_height,
-                                tmpColorAsFloatBits
-                        );
+                                batch.drawTexture(pr,
+                                        position.x,
+                                        position.y,
+                                        regionBounds.width,
+                                        regionBounds.height,
+                                        scale,
+                                        scale,
+                                        angleRad + textureAngleRad,
+                                        regionBounds.x / textureWidth,
+                                        regionBounds.y / textureHeight,
+                                        actualTextureTranslation.x,
+                                        actualTextureTranslation.y,
+                                        tex_width_and_height,
+                                        tmpColorAsFloatBits
+                                );
+                        }
                 }
                 return this;
         }
