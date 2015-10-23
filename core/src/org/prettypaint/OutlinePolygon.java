@@ -37,7 +37,7 @@ import com.badlogic.gdx.utils.Array;
  *
  * @author Andreas
  */
-public class OutlinePolygon implements PrettyPolygon{
+public class OutlinePolygon implements PrettyPolygon {
 
         protected static final int VERTEX_TYPE_USER = 1;
         protected static final int VERTEX_TYPE_AUX = 0;
@@ -65,7 +65,7 @@ public class OutlinePolygon implements PrettyPolygon{
 
         private Array<Vector2> verticesRotatedAndTranslated = new Array<Vector2>(true, 4, Vector2.class);
         private Array<BoundingBox> boundingBoxes = new Array<BoundingBox>();
-        private DebugDrawer debugDrawer;
+        private PrettyPolygonBatch.DebugRenderer debugRenderer;
         private boolean drawInside = true;
         private boolean drawOutside = true;
 
@@ -74,16 +74,26 @@ public class OutlinePolygon implements PrettyPolygon{
         private int drawInvocations = 0;
         private boolean closedPolygon = true;
 
+        private long timeOfLastDrawCall;
+
         /** Draws anti aliased polygon edges. */
         public OutlinePolygon() {
-                debugDrawer = new DebugDrawer() {
+                debugRenderer = new PrettyPolygonBatch.DebugRenderer(this) {
                         @Override
                         public void draw(ShapeRenderer shapeRenderer) {
                                 debugDraw(shapeRenderer);
                         }
                 };
+
+
         }
 
+        @Override
+        public long getTimeOfLastDrawCall() {
+                return timeOfLastDrawCall;
+        }
+
+        int i = 0;
 
         /**
          * Draw the edges defined by {@link #setVertices(Array)}.
@@ -94,6 +104,8 @@ public class OutlinePolygon implements PrettyPolygon{
          * @return this for chaining.
          */
         public OutlinePolygon draw(PrettyPolygonBatch batch) {
+                if (i++ == 0) setDrawDebugInfo(batch, true);
+
                 if (myParents.size > 0) {
                         // if i have a parent i will not be drawn
                         for (OutlinePolygon outlinePolygon : myParents) {
@@ -103,8 +115,9 @@ public class OutlinePolygon implements PrettyPolygon{
                 }
 
                 drawInvocations++;
-                
+
                 if (myChildren.size == 0 || drawInvocations >= myChildren.size) {
+                        timeOfLastDrawCall = System.currentTimeMillis();
                         // if i don't have any children i will just attempt to draw right away
                         // also if all my children has had their draw method called i will attempt to draw
 
@@ -346,7 +359,10 @@ public class OutlinePolygon implements PrettyPolygon{
                         n2.add(nor2);
 
                         Vector2 result = new Vector2();
-                        Intersector.intersectLines(m1, m2, n1, n2, result);
+                        boolean success = Intersector.intersectLines(m1, m2, n1, n2, result);
+
+
+                        if (!success) System.out.println(vertices);
 
                         return result;
 
@@ -516,10 +532,10 @@ public class OutlinePolygon implements PrettyPolygon{
 
         public OutlinePolygon setDrawDebugInfo(PrettyPolygonBatch batch, boolean debugDraw) {
                 if (debugDraw) {
-                        if (!batch.debugDrawingTasks.contains(debugDrawer, true))
-                                batch.debugDrawingTasks.add(debugDrawer);
+                        if (!batch.debugRendererArray.contains(debugRenderer, true))
+                                batch.debugRendererArray.add(debugRenderer);
                 } else {
-                        batch.debugDrawingTasks.removeValue(debugDrawer, true);
+                        batch.debugRendererArray.removeValue(debugRenderer, true);
                 }
 
                 return this;
@@ -527,7 +543,7 @@ public class OutlinePolygon implements PrettyPolygon{
 
 
         public boolean isDrawingDebugInfo(PrettyPolygonBatch batch) {
-                return batch.debugDrawingTasks.contains(debugDrawer, true);
+                return batch.debugRendererArray.contains(debugRenderer, true);
         }
 
         /** Set the data for one stripVertex. */
@@ -561,7 +577,7 @@ public class OutlinePolygon implements PrettyPolygon{
         }
 
         public OutlinePolygon setPosition(float x, float y) {
-                this.position.set(x,y);
+                this.position.set(x, y);
                 return this;
         }
 
@@ -717,28 +733,41 @@ public class OutlinePolygon implements PrettyPolygon{
                 }
 
                 for (BoundingBox bb : boundingBoxes) {
-                        shapeRenderer.setColor(Color.RED);
+                        shapeRenderer.setColor(Color.ORANGE);
                         Array<Float> data = bb.insideVertexData;
                         for (int i = 0; i < data.size - 6; ) {
-                                float x1 = data.items[i];
-                                float y1 = data.items[i + 1];
 
-                                float x2 = data.items[i + 3];
-                                float y2 = data.items[i + 4];
+                                tmp.x = data.items[i];
+                                tmp.y = data.items[i + 1];
+                                tmp.rotateRad(angleRad);
+                                tmp.scl(scale);
+                                tmp.add(position);
+
+                                tmp1.x = data.items[i + 3];
+                                tmp1.y = data.items[i + 4];
+                                tmp1.rotateRad(angleRad);
+                                tmp1.scl(scale);
+                                tmp1.add(position);
                                 i += 3;
 
-                                shapeRenderer.line(x1, y1, x2, y2);
+                                shapeRenderer.line(tmp, tmp1);
                         }
                         data = bb.outsideVertexData;
                         for (int i = 0; i < data.size - 6; ) {
-                                float x1 = data.items[i];
-                                float y1 = data.items[i + 1];
+                                tmp.x = data.items[i];
+                                tmp.y = data.items[i + 1];
+                                tmp.rotateRad(angleRad);
+                                tmp.scl(scale);
+                                tmp.add(position);
 
-                                float x2 = data.items[i + 3];
-                                float y2 = data.items[i + 4];
+                                tmp1.x = data.items[i + 3];
+                                tmp1.y = data.items[i + 4];
+                                tmp1.rotateRad(angleRad);
+                                tmp1.scl(scale);
+                                tmp1.add(position);
                                 i += 3;
 
-                                shapeRenderer.line(x1, y1, x2, y2);
+                                shapeRenderer.line(tmp, tmp1);
                         }
 
                 }

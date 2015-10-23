@@ -11,14 +11,12 @@ import org.clipper.*;
  */
 public class OutlineMerger {
 
-        private final DefaultClipper defaultClipper = new DefaultClipper();
-
         private Array<Array<Vector2>> debug = new Array<Array<Vector2>>();
 
-        private DebugDrawer debugDrawer;
+        private PrettyPolygonBatch.DebugRenderer debugRenderer;
 
         public OutlineMerger() {
-                debugDrawer = new DebugDrawer() {
+                debugRenderer = new PrettyPolygonBatch.DebugRenderer(null) {
                         @Override
                         public void draw(ShapeRenderer shapeRenderer) {
                                 debugDraw(shapeRenderer);
@@ -29,17 +27,17 @@ public class OutlineMerger {
 
         public OutlineMerger setDrawDebugInfo(PrettyPolygonBatch batch, boolean debugDraw) {
                 if (debugDraw) {
-                        if (!batch.debugDrawingTasks.contains(debugDrawer, true))
-                                batch.debugDrawingTasks.add(debugDrawer);
+                        if (!batch.debugRendererArray.contains(debugRenderer, true))
+                                batch.debugRendererArray.add(debugRenderer);
                 } else {
-                        batch.debugDrawingTasks.removeValue(debugDrawer, true);
+                        batch.debugRendererArray.removeValue(debugRenderer, true);
                 }
 
                 return this;
         }
 
         public boolean isDrawingDebugInfo(PrettyPolygonBatch batch) {
-                return batch.debugDrawingTasks.contains(debugDrawer, true);
+                return batch.debugRendererArray.contains(debugRenderer, true);
         }
 
         public void clearDebugLines() {
@@ -87,7 +85,7 @@ public class OutlineMerger {
 
                 Array<Point.LongPoint> previousPoints = new Array<Point.LongPoint>();
 
-                defaultClipper.clear();
+                DefaultClipper defaultClipper = new DefaultClipper();
 
                 for (int i = 0; i < toMerge.size; i++) {
                         OutlinePolygon or = toMerge.get(i);
@@ -105,10 +103,11 @@ public class OutlineMerger {
                 defaultClipper.execute(Clipper.ClipType.UNION, unions1, Clipper.PolyFillType.NON_ZERO, Clipper.PolyFillType.NON_ZERO);
 
                 Paths simplified = DefaultClipper.simplifyPolygons(unions1, Clipper.PolyFillType.NON_ZERO);
+                Paths simplifiedAndCleaned = simplified.cleanPolygons(20d);
 
-                if (verbose) System.out.println("Auto outlining resulted in " + simplified.size() + " patches.");
+                if (verbose) System.out.println("Auto outlining resulted in " + simplifiedAndCleaned.size() + " patches.");
 
-                for (Path path : unions1) {
+                for (Path path : simplifiedAndCleaned) {
 
                         Array<Vector2> vertices = RenderUtil.convertToVectors(path);
 

@@ -52,7 +52,7 @@ public class TexturePolygon implements PrettyPolygon {
         private final Vector2 tmpVector = new Vector2();
         /** These are all triangles. */
         private final Array<PolygonRegion> polygonRegions;
-        private final DebugDrawer debugDrawer;
+        private final PrettyPolygonBatch.DebugRenderer debugRenderer;
         private float angleRad = 0f;
         private float scale = 0.01f;
         private float textureScale = 1f;
@@ -74,16 +74,23 @@ public class TexturePolygon implements PrettyPolygon {
         /** The last time */
         public long timeOfLastRender;
 
+        private long timeOfLastDrawCall;
+
 
         /** Made for drawing seamless textures on polygons. */
         public TexturePolygon() {
                 polygonRegions = new Array<PolygonRegion>(true, 4, PolygonRegion.class);
-                debugDrawer = new DebugDrawer() {
+                debugRenderer = new PrettyPolygonBatch.DebugRenderer(this) {
                         @Override
                         public void draw(ShapeRenderer shapeRenderer) {
                                 debugDraw(shapeRenderer);
                         }
                 };
+        }
+
+        @Override
+        public long getTimeOfLastDrawCall() {
+                return timeOfLastDrawCall;
         }
 
         /**
@@ -194,9 +201,11 @@ public class TexturePolygon implements PrettyPolygon {
 
                 float srcWidth = textureRegion.getRegionWidth() / textureWidth;
                 float srcHeight = textureRegion.getRegionHeight() / textureHeight;
-                if(srcWidth!=srcHeight)
+                if (srcWidth != srcHeight)
                         throw new IllegalArgumentException("Texture width and height must be equal. :(");
                 float tex_width_and_height = srcHeight;
+
+                timeOfLastDrawCall = System.currentTimeMillis();
 
                 Rectangle frustum = batch.frustum;
 
@@ -328,10 +337,10 @@ public class TexturePolygon implements PrettyPolygon {
         @Override
         public TexturePolygon setDrawDebugInfo(PrettyPolygonBatch batch, boolean debugDraw) {
                 if (debugDraw) {
-                        if (!batch.debugDrawingTasks.contains(debugDrawer, true))
-                                batch.debugDrawingTasks.add(debugDrawer);
+                        if (!batch.debugRendererArray.contains(debugRenderer, true))
+                                batch.debugRendererArray.add(debugRenderer);
                 } else {
-                        batch.debugDrawingTasks.removeValue(debugDrawer, true);
+                        batch.debugRendererArray.removeValue(debugRenderer, true);
                 }
 
                 return this;
@@ -345,7 +354,7 @@ public class TexturePolygon implements PrettyPolygon {
          */
         @Override
         public boolean isDrawingDebugInfo(PrettyPolygonBatch batch) {
-                return batch.debugDrawingTasks.contains(debugDrawer, true);
+                return batch.debugRendererArray.contains(debugRenderer, true);
         }
 
         /**
@@ -630,4 +639,5 @@ public class TexturePolygon implements PrettyPolygon {
                 }
                 return verticesRotatedAndTranslated;
         }
+
 }

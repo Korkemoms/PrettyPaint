@@ -78,7 +78,7 @@ public class Background {
         private float tmpColorAsFloatBits = tmpColor.toFloatBits();
 
 
-        private DebugDrawer debugDrawer = new DebugDrawer() {
+        private PrettyPolygonBatch.DebugRenderer debugRenderer = new PrettyPolygonBatch.DebugRenderer(null) {
                 @Override
                 public void draw(ShapeRenderer shapeRenderer) {
                         shapeRenderer.set(ShapeRenderer.ShapeType.Line);

@@ -109,4 +109,6 @@ public interface PrettyPolygon {
          * @return this for chaining.
          */
         PrettyPolygon setScale(float scale);
+
+        long getTimeOfLastDrawCall();
 }

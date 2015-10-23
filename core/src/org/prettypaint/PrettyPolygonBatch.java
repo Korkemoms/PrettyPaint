@@ -62,15 +62,15 @@ public class PrettyPolygonBatch {
         private Texture lastTexture = null;
 
         /** Draws lines and shapes used for debugging. */
-        private ShapeRenderer debugRenderer;
+        private ShapeRenderer shapeRenderer;
 
         private boolean shrinkFrustumForDebugDraw;
 
         /**
          * When other classes want to draw something for debugging purposes they can add
-         * a {@link DebugDrawer} to this array. These will be drawn when you call {@link #end()}.
+         * a {@link DebugRenderer} to this array. These will be drawn when you call {@link #end()}.
          */
-        protected Array<DebugDrawer> debugDrawingTasks = new Array<DebugDrawer>(true, 4, DebugDrawer.class);
+        protected Array<DebugRenderer> debugRendererArray = new Array<DebugRenderer>(true, 4, DebugRenderer.class);
 
         /**
          * For every frame: call one of the begin methods, then pass this batch to a {@link PrettyPolygon}s draw method. After you have done
@@ -102,7 +102,7 @@ public class PrettyPolygonBatch {
         public void dispose() {
                 if (shaderProgram != null) shaderProgram.dispose();
                 if (mesh != null) mesh.dispose();
-                if (debugRenderer != null) debugRenderer.dispose();
+                if (shapeRenderer != null) shapeRenderer.dispose();
         }
 
         /**
@@ -405,29 +405,37 @@ public class PrettyPolygonBatch {
 
 
         private void doAllDebugDrawing() {
-                if (debugDrawingTasks.size == 0 && !drawDebugInfo) return;
+                if (debugRendererArray.size == 0 && !drawDebugInfo) return;
 
-                if (debugRenderer == null) {
-                        debugRenderer = new ShapeRenderer();
-                        debugRenderer.setAutoShapeType(true);
+                if (shapeRenderer == null) {
+                        shapeRenderer = new ShapeRenderer();
+                        shapeRenderer.setAutoShapeType(true);
                 }
 
 
-                debugRenderer.begin();
-                debugRenderer.setProjectionMatrix(worldView);
+                shapeRenderer.begin();
+                shapeRenderer.setProjectionMatrix(worldView);
 
                 if (drawDebugInfo) {
-                        debugDraw(debugRenderer);
+                        debugDraw(shapeRenderer);
+                }
+
+                long now = System.currentTimeMillis();
+                for (int i = debugRendererArray.size - 1; i >= 0; i--) {
+                        DebugRenderer debugRenderer = debugRendererArray.items[i];
+
+                        debugRenderer.draw(shapeRenderer);
+
+                        // if it is more than one second since the last time
+                        // the owner of this debugRenderer did any normal drawing
+                        // then we stop the debug rendering of it
+                        if (debugRenderer.owner.getTimeOfLastDrawCall() + 1000 < now) {
+                                debugRendererArray.removeIndex(i);
+                        }
                 }
 
 
-                for (int i = debugDrawingTasks.size - 1; i >= 0; i--) {
-                        debugDrawingTasks.items[i].draw(debugRenderer);
-
-                }
-
-
-                debugRenderer.end();
+                shapeRenderer.end();
 
         }
 
@@ -435,5 +443,17 @@ public class PrettyPolygonBatch {
                 shapeRenderer.set(ShapeRenderer.ShapeType.Line);
                 shapeRenderer.setColor(Color.CYAN);
                 shapeRenderer.rect(frustum.x, frustum.y, frustum.width, frustum.height);
+        }
+
+        public static class DebugRenderer {
+
+                public PrettyPolygon owner;
+
+                public DebugRenderer(PrettyPolygon owner){
+                        this.owner = owner;
+                }
+
+                void draw(ShapeRenderer shapeRenderer) {
+                }
         }
 }
