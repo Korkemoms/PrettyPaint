@@ -53,10 +53,9 @@ public class OutlinePolygon implements PrettyPolygon {
         private Array<Vector2> verticesRotatedAndTranslated = new Array<Vector2>(true, 4, Vector2.class);
 
         private final AuxVertexFinder auxVertexFinder = new AuxVertexFinder();
-        private final Vector2 tmpVector2 = new Vector2(), tmp1 = new Vector2(), tmp2 = new Vector2(), tmp3 = new Vector2();
+        private final Vector2 tmp = new Vector2(), tmp1 = new Vector2(), tmp2 = new Vector2(), tmp3 = new Vector2();
         private final Rectangle tmpRectangle = new Rectangle();
         private final Color tmpColor = new Color();
-
 
         private final Rectangle frustum = new Rectangle();
 
@@ -101,6 +100,10 @@ public class OutlinePolygon implements PrettyPolygon {
 
         /** Used by a {@link PrettyPolygonBatch} to determine if it should stop debug rendering this polygon. */
         private long timeOfLastDrawCall;
+
+        private boolean drawBoundingBoxesForDebugDraw = true;
+        private boolean drawTriangleStripsForDebugDraw = true;
+        private boolean drawLineFromFirstToLastForDebugDraw = true;
 
         /** Draws anti aliased polygon edges. */
         public OutlinePolygon() {
@@ -216,21 +219,6 @@ public class OutlinePolygon implements PrettyPolygon {
                 }
                 boundingRectangles.peek().count = vertices.size - boundingRectangles.peek().begin + (closedPolygon ? 1 : 0);
 
-
-                // make the bounding rectangles overlap
-                // (if they do not overlap then edges are not drawn properly when close to the frustum bounds)
-                for (BoundingBox br : boundingRectangles) {
-                        int begin = br.begin;
-                        int end = br.begin + br.count;
-                        Rectangle r = br.rectangle;
-
-                        int mergeWithVertex = (begin - 1 + vertices.size) % vertices.size;
-                        r.merge(vertices.items[mergeWithVertex]);
-
-                        mergeWithVertex = (end + 1 + vertices.size) % vertices.size;
-                        r.merge(vertices.items[mergeWithVertex]);
-                }
-
                 return boundingRectangles;
         }
 
@@ -241,7 +229,6 @@ public class OutlinePolygon implements PrettyPolygon {
                 boolean drawInside = this.drawInside;
                 boolean drawOutside = this.drawOutside;
                 AuxVertexFinder auxVertexFinder = this.auxVertexFinder;
-
 
                 boolean clockwisePolygon = RenderUtil.clockwisePolygon(vertices);
                 auxVertexFinder.setClockwise(clockwisePolygon);
@@ -280,10 +267,10 @@ public class OutlinePolygon implements PrettyPolygon {
                                 int k = j % vertices.size;
 
                                 Vector2 currentVertex = vertices.items[k];
-                                Vector2 currentAux = auxVertexFinder.getAux(vertices, k);
+                                add(currentVertex, VERTEX_TYPE_USER, vertexData, br);
 
-                                add(currentVertex, VERTEX_TYPE_USER, vertexData);
-                                add(currentAux, VERTEX_TYPE_AUX, vertexData);
+                                Vector2 currentAux = auxVertexFinder.getAux(vertices, k);
+                                add(currentAux, VERTEX_TYPE_AUX, vertexData, br);
                         }
                 }
 
@@ -301,17 +288,17 @@ public class OutlinePolygon implements PrettyPolygon {
                                 int i = vertices.size - 1;
                                 Vector2 currentVertex = vertices.items[i];
 
-                                Vector2 currentAux = auxVertexFinder.getEndingAux(vertices, tmpVector2, 0);
-                                add(currentVertex, VERTEX_TYPE_USER, vertexData);
-                                add(currentAux, VERTEX_TYPE_AUX, vertexData);
+                                Vector2 currentAux = auxVertexFinder.getEndingAux(vertices, tmp, 0);
+                                add(currentVertex, VERTEX_TYPE_USER, vertexData, br);
+                                add(currentAux, VERTEX_TYPE_AUX, vertexData, br);
 
-                                currentAux = auxVertexFinder.getEndingAux(vertices, tmpVector2, MathUtils.PI * 0.25f);
-                                add(currentVertex, VERTEX_TYPE_USER, vertexData);
-                                add(currentAux, VERTEX_TYPE_AUX, vertexData);
+                                currentAux = auxVertexFinder.getEndingAux(vertices, tmp, MathUtils.PI * 0.25f);
+                                add(currentVertex, VERTEX_TYPE_USER, vertexData, br);
+                                add(currentAux, VERTEX_TYPE_AUX, vertexData, br);
 
-                                currentAux = auxVertexFinder.getEndingAux(vertices, tmpVector2, MathUtils.PI * 0.5f);
-                                add(currentVertex, VERTEX_TYPE_USER, vertexData);
-                                add(currentAux, VERTEX_TYPE_AUX, vertexData);
+                                currentAux = auxVertexFinder.getEndingAux(vertices, tmp, MathUtils.PI * 0.5f);
+                                add(currentVertex, VERTEX_TYPE_USER, vertexData, br);
+                                add(currentAux, VERTEX_TYPE_AUX, vertexData, br);
 
                         }
 
@@ -327,20 +314,22 @@ public class OutlinePolygon implements PrettyPolygon {
                                 int i = 0;
                                 Vector2 currentVertex = vertices.items[i];
 
-                                Vector2 currentAux = auxVertexFinder.getBeginningAux(vertices, tmpVector2, 0);
-                                insert(currentAux, VERTEX_TYPE_AUX, vertexData);
-                                insert(currentVertex, VERTEX_TYPE_USER, vertexData);
+                                Vector2 currentAux = auxVertexFinder.getBeginningAux(vertices, tmp, 0);
+                                insert(currentAux, VERTEX_TYPE_AUX, vertexData, br);
+                                insert(currentVertex, VERTEX_TYPE_USER, vertexData, br);
 
-                                currentAux = auxVertexFinder.getBeginningAux(vertices, tmpVector2, MathUtils.PI * 0.25f);
-                                insert(currentAux, VERTEX_TYPE_AUX, vertexData);
-                                insert(currentVertex, VERTEX_TYPE_USER, vertexData);
+                                currentAux = auxVertexFinder.getBeginningAux(vertices, tmp, MathUtils.PI * 0.25f);
+                                insert(currentAux, VERTEX_TYPE_AUX, vertexData, br);
+                                insert(currentVertex, VERTEX_TYPE_USER, vertexData, br);
 
-                                currentAux = auxVertexFinder.getBeginningAux(vertices, tmpVector2, MathUtils.PI * 0.5f);
-                                insert(currentAux, VERTEX_TYPE_AUX, vertexData);
-                                insert(currentVertex, VERTEX_TYPE_USER, vertexData);
+                                currentAux = auxVertexFinder.getBeginningAux(vertices, tmp, MathUtils.PI * 0.5f);
+                                insert(currentAux, VERTEX_TYPE_AUX, vertexData, br);
+                                insert(currentVertex, VERTEX_TYPE_USER, vertexData, br);
 
                         }
                 }
+
+
         }
 
         /**
@@ -563,34 +552,22 @@ public class OutlinePolygon implements PrettyPolygon {
         }
 
 
-        public OutlinePolygon setDrawDebugInfo(PrettyPolygonBatch batch, boolean debugDraw) {
-                if (debugDraw) {
-                        if (!batch.debugRendererArray.contains(debugRenderer, true))
-                                batch.debugRendererArray.add(debugRenderer);
-                } else {
-                        batch.debugRendererArray.removeValue(debugRenderer, true);
-                }
-
-                return this;
-        }
 
 
-        public boolean isDrawingDebugInfo(PrettyPolygonBatch batch) {
-                return batch.debugRendererArray.contains(debugRenderer, true);
-        }
-
-        /** Set the data for one stripVertex. */
-        private void add(Vector2 vertex, float alpha, Array<Float> vertexData) {
+        /** Set the data for one vertex. Also merges this vertex with the BoundingBox's rectangle. */
+        private void add(Vector2 vertex, float alpha, Array<Float> vertexData, BoundingBox br) {
                 vertexData.add(vertex.x);
                 vertexData.add(vertex.y);
                 vertexData.add(alpha);
+                br.rectangle.merge(vertex);
         }
 
         /** Set the data for one stripVertex. */
-        private void insert(Vector2 vertex, float alpha, Array<Float> vertexData) {
+        private void insert(Vector2 vertex, float alpha, Array<Float> vertexData, BoundingBox br) {
                 vertexData.insert(0, alpha);
                 vertexData.insert(0, vertex.y);
                 vertexData.insert(0, vertex.x);
+                br.rectangle.merge(vertex);
         }
 
 
@@ -677,17 +654,17 @@ public class OutlinePolygon implements PrettyPolygon {
          */
         private Rectangle getCullingArea(Rectangle cullingArea, Rectangle boundingBox, float rotation, Vector2 translation, float scale) {
 
-                tmpVector2.set(boundingBox.x, boundingBox.y).scl(scale).rotateRad(rotation).add(translation);
-                cullingArea.set(tmpVector2.x, tmpVector2.y, 0, 0);
+                tmp.set(boundingBox.x, boundingBox.y).scl(scale).rotateRad(rotation).add(translation);
+                cullingArea.set(tmp.x, tmp.y, 0, 0);
 
-                tmpVector2.set(boundingBox.x + boundingBox.width, boundingBox.y).scl(scale).rotateRad(rotation).add(translation);
-                cullingArea.merge(tmpVector2);
+                tmp.set(boundingBox.x + boundingBox.width, boundingBox.y).scl(scale).rotateRad(rotation).add(translation);
+                cullingArea.merge(tmp);
 
-                tmpVector2.set(boundingBox.x + boundingBox.width, boundingBox.y + boundingBox.height).scl(scale).rotateRad(rotation).add(translation);
-                cullingArea.merge(tmpVector2);
+                tmp.set(boundingBox.x + boundingBox.width, boundingBox.y + boundingBox.height).scl(scale).rotateRad(rotation).add(translation);
+                cullingArea.merge(tmp);
 
-                tmpVector2.set(boundingBox.x, boundingBox.y + boundingBox.height).scl(scale).rotateRad(rotation).add(translation);
-                cullingArea.merge(tmpVector2);
+                tmp.set(boundingBox.x, boundingBox.y + boundingBox.height).scl(scale).rotateRad(rotation).add(translation);
+                cullingArea.merge(tmp);
 
                 return cullingArea;
         }
@@ -713,6 +690,57 @@ public class OutlinePolygon implements PrettyPolygon {
                 return this;
         }
 
+        /** For debugging. */
+        public OutlinePolygon setDrawDebugInfo(PrettyPolygonBatch batch, boolean debugDraw) {
+                if (debugDraw) {
+                        if (!batch.debugRendererArray.contains(debugRenderer, true))
+                                batch.debugRendererArray.add(debugRenderer);
+                } else {
+                        batch.debugRendererArray.removeValue(debugRenderer, true);
+                }
+
+                return this;
+        }
+
+        /** For debugging. */
+        public boolean isDrawingDebugInfo(PrettyPolygonBatch batch) {
+                return batch.debugRendererArray.contains(debugRenderer, true);
+        }
+
+        /** For debugging. */
+        public OutlinePolygon setDrawBoundingBoxesForDebugDraw(boolean drawBoundingBoxesForDebugDraw) {
+                this.drawBoundingBoxesForDebugDraw = drawBoundingBoxesForDebugDraw;
+                return this;
+        }
+
+        /** For debugging. */
+        public boolean isDrawingBoundingBoxesForDebugDraw() {
+                return drawBoundingBoxesForDebugDraw;
+        }
+
+
+        /** For debugging. */
+        public OutlinePolygon setDrawTriangleStripsForDebugDraw(boolean drawTriangleStripsForDebugDraw) {
+                this.drawTriangleStripsForDebugDraw = drawTriangleStripsForDebugDraw;
+                return this;
+        }
+
+        /** For debugging. */
+        public boolean isDrawingTriangleStripsForDebugDraw() {
+                return drawTriangleStripsForDebugDraw;
+        }
+
+        /** For debugging. */
+        public OutlinePolygon setDrawLineFromFirstToLastForDebugDraw(boolean drawLineFromFirstToLastForDebugDraw) {
+                this.drawLineFromFirstToLastForDebugDraw = drawLineFromFirstToLastForDebugDraw;
+                return this;
+        }
+
+        /** For debugging. */
+        public boolean isDrawingLineFromFirstToLastForDebugDraw() {
+                return drawLineFromFirstToLastForDebugDraw;
+        }
+
         /**
          * Draw bounding rectangle(rotated) and culling area(never rotated,
          * contains the bounding rectangle) for each triangle.
@@ -725,84 +753,95 @@ public class OutlinePolygon implements PrettyPolygon {
                         return;
                 }
 
-                for (BoundingBox br : boundingBoxes) {
+                if (drawBoundingBoxesForDebugDraw)
+                        for (BoundingBox br : boundingBoxes) {
 
-                        Rectangle r = br.rectangle;
-                        Rectangle cullingArea = getCullingArea(tmpRectangle, r, angleRad, position, scale);
+                                Rectangle r = br.rectangle;
+                                Rectangle cullingArea = getCullingArea(tmpRectangle, r, angleRad, position, scale);
 
-                        shapeRenderer.set(ShapeRenderer.ShapeType.Filled);
-                        shapeRenderer.setColor(frustum.overlaps(cullingArea) ? debugFillGreen : debugFillRed);
-                        shapeRenderer.rect(cullingArea.x, cullingArea.y, cullingArea.width, cullingArea.height);
+                                shapeRenderer.set(ShapeRenderer.ShapeType.Filled);
+                                shapeRenderer.setColor(frustum.overlaps(cullingArea) ? debugFillGreen : debugFillRed);
+                                shapeRenderer.rect(cullingArea.x, cullingArea.y, cullingArea.width, cullingArea.height);
 
-                        tmpVector2.set(r.x, r.y).rotateRad(angleRad).add(position);
-                        tmp1.set(r.x + r.width, r.y).rotateRad(angleRad).add(position);
-                        tmp2.set(r.x + r.width, r.y + r.height).rotateRad(angleRad).add(position);
-                        tmp3.set(r.x, r.y + r.height).rotateRad(angleRad).add(position);
+                                tmp.set(r.x, r.y).rotateRad(angleRad).add(position);
+                                tmp1.set(r.x + r.width, r.y).rotateRad(angleRad).add(position);
+                                tmp2.set(r.x + r.width, r.y + r.height).rotateRad(angleRad).add(position);
+                                tmp3.set(r.x, r.y + r.height).rotateRad(angleRad).add(position);
 
-                        shapeRenderer.set(ShapeRenderer.ShapeType.Line);
-                        shapeRenderer.setColor(frustum.overlaps(cullingArea) ? Color.GREEN : Color.RED);
+                                shapeRenderer.set(ShapeRenderer.ShapeType.Line);
+                                shapeRenderer.setColor(frustum.overlaps(cullingArea) ? Color.GREEN : Color.RED);
 
-                        shapeRenderer.line(tmpVector2, tmp1);
-                        shapeRenderer.line(tmp1, tmp2);
-                        shapeRenderer.line(tmp2, tmp3);
-                        shapeRenderer.line(tmp3, tmpVector2);
+                                shapeRenderer.line(tmp, tmp1);
+                                shapeRenderer.line(tmp1, tmp2);
+                                shapeRenderer.line(tmp2, tmp3);
+                                shapeRenderer.line(tmp3, tmp);
 
 
+                        }
+
+
+                if (drawLineFromFirstToLastForDebugDraw) {
+                        shapeRenderer.setColor(Color.BLUE);
+                        for (BoundingBox br : boundingBoxes) {
+                                tmp.set(vertices.items[br.begin]);
+                                tmp.rotateRad(angleRad);
+                                tmp.scl(scale);
+                                tmp.add(position);
+
+
+                                tmp1.set(vertices.items[(br.begin + br.count) % vertices.size]);
+                                tmp1.rotateRad(angleRad);
+                                tmp.scl(scale);
+                                tmp1.add(position);
+
+                                shapeRenderer.line(tmp, tmp1);
+
+                        }
                 }
 
-                shapeRenderer.setColor(Color.BLUE);
-                for (BoundingBox br : boundingBoxes) {
-                        tmpVector2.set(vertices.items[br.begin]);
-                        tmpVector2.rotateRad(angleRad);
-                        tmpVector2.add(position);
 
-
-                        tmp1.set(vertices.items[(br.begin + br.count) % vertices.size]);
-                        tmp1.rotateRad(angleRad);
-                        tmp1.add(position);
-
-                        shapeRenderer.line(tmpVector2, tmp1);
-
-                }
-
-                for (BoundingBox bb : boundingBoxes) {
+                if (drawTriangleStripsForDebugDraw) {
                         shapeRenderer.setColor(Color.ORANGE);
-                        Array<Float> data = bb.insideVertexData;
-                        for (int i = 0; i < data.size - 6; ) {
 
-                                tmpVector2.x = data.items[i];
-                                tmpVector2.y = data.items[i + 1];
-                                tmpVector2.rotateRad(angleRad);
-                                tmpVector2.scl(scale);
-                                tmpVector2.add(position);
+                        for (BoundingBox bb : boundingBoxes) {
 
-                                tmp1.x = data.items[i + 3];
-                                tmp1.y = data.items[i + 4];
-                                tmp1.rotateRad(angleRad);
-                                tmp1.scl(scale);
-                                tmp1.add(position);
-                                i += 3;
+                                Array<Float> data = bb.insideVertexData;
+                                for (int i = 0; i < data.size - 6; ) {
 
-                                shapeRenderer.line(tmpVector2, tmp1);
+                                        tmp.x = data.items[i];
+                                        tmp.y = data.items[i + 1];
+                                        tmp.rotateRad(angleRad);
+                                        tmp.scl(scale);
+                                        tmp.add(position);
+
+                                        tmp1.x = data.items[i + 3];
+                                        tmp1.y = data.items[i + 4];
+                                        tmp1.rotateRad(angleRad);
+                                        tmp1.scl(scale);
+                                        tmp1.add(position);
+                                        i += 3;
+
+                                        shapeRenderer.line(tmp, tmp1);
+                                }
+                                data = bb.outsideVertexData;
+                                for (int i = 0; i < data.size - 6; ) {
+                                        tmp.x = data.items[i];
+                                        tmp.y = data.items[i + 1];
+                                        tmp.rotateRad(angleRad);
+                                        tmp.scl(scale);
+                                        tmp.add(position);
+
+                                        tmp1.x = data.items[i + 3];
+                                        tmp1.y = data.items[i + 4];
+                                        tmp1.rotateRad(angleRad);
+                                        tmp1.scl(scale);
+                                        tmp1.add(position);
+                                        i += 3;
+
+                                        shapeRenderer.line(tmp, tmp1);
+                                }
+
                         }
-                        data = bb.outsideVertexData;
-                        for (int i = 0; i < data.size - 6; ) {
-                                tmpVector2.x = data.items[i];
-                                tmpVector2.y = data.items[i + 1];
-                                tmpVector2.rotateRad(angleRad);
-                                tmpVector2.scl(scale);
-                                tmpVector2.add(position);
-
-                                tmp1.x = data.items[i + 3];
-                                tmp1.y = data.items[i + 4];
-                                tmp1.rotateRad(angleRad);
-                                tmp1.scl(scale);
-                                tmp1.add(position);
-                                i += 3;
-
-                                shapeRenderer.line(tmpVector2, tmp1);
-                        }
-
                 }
         }
 
