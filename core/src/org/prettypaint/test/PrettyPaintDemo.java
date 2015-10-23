@@ -87,7 +87,7 @@ public class PrettyPaintDemo extends ApplicationAdapter implements InputProcesso
                 shadowPolygon = new OutlinePolygon();
                 shadowPolygon.setDrawInside(false);
                 shadowPolygon.setVertices(vertices);
-                shadowPolygon.setColor(new Color(0, 0, 0, 0.5f));
+                shadowPolygon.setColor(new Color(0, 0, 0, 0.4f));
                 shadowPolygon.setHalfWidth(outlinePolygon.getHalfWidth() * 5);
 
 
@@ -115,7 +115,7 @@ public class PrettyPaintDemo extends ApplicationAdapter implements InputProcesso
                 shadowPolygon.setScale(scale);
                 outlinePolygon.setScale(scale);
 
-                float angleRad = Interpolation.pow2.apply(sin) * MathUtils.PI2;
+                float angleRad = Interpolation.fade.apply(sin) * MathUtils.PI2 * 2;
                 texturePolygon.setAngleRad(angleRad);
                 shadowPolygon.setAngleRad(angleRad);
                 outlinePolygon.setAngleRad(angleRad);
