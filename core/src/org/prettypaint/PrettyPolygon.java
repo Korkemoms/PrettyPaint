@@ -110,5 +110,15 @@ public interface PrettyPolygon {
          */
         PrettyPolygon setScale(float scale);
 
+        /**
+         * Used by a {@link PrettyPolygonBatch} to determine if it should stop debug rendering this
+         * polygon.
+         *
+         * @return the time of last draw call.
+         */
         long getTimeOfLastDrawCall();
+
+        PrettyPolygon setOpacity(float opacity);
+
+        float getOpacity();
 }
