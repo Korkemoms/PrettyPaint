@@ -31,9 +31,9 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
-import org.prettypaint.PolygonBatch;
-import org.prettypaint.PolygonOutline;
-import org.prettypaint.PolygonTexture;
+import org.prettypaint.OutlinePolygon;
+import org.prettypaint.PrettyPolygonBatch;
+import org.prettypaint.TexturePolygon;
 
 /**
  * This is a demo showing how to use PrettyPaint to draw a pretty polygon.
@@ -48,10 +48,10 @@ public class PrettyPaintDemo extends ApplicationAdapter implements InputProcesso
         Vector2 cameraPositionAtLastWorldTouch;
 
 
-        PolygonBatch polygonBatch;
-        PolygonTexture textureDrawer;
-        PolygonOutline shadowDrawer;
-        PolygonOutline outlineDrawer;
+        PrettyPolygonBatch polygonBatch;
+        TexturePolygon textureDrawer;
+        OutlinePolygon shadowDrawer;
+        OutlinePolygon outlineDrawer;
 
         @Override
         public void create() {
@@ -73,15 +73,15 @@ public class PrettyPaintDemo extends ApplicationAdapter implements InputProcesso
                 }
 
 
-                polygonBatch = new PolygonBatch();
+                polygonBatch = new PrettyPolygonBatch();
 
 
-                outlineDrawer = new PolygonOutline();
+                outlineDrawer = new OutlinePolygon();
                 outlineDrawer.setVertices(vertices);
                 outlineDrawer.setColor(Color.WHITE);
 
 
-                shadowDrawer = new PolygonOutline();
+                shadowDrawer = new OutlinePolygon();
                 shadowDrawer.setDrawInside(false);
                 shadowDrawer.setVertices(vertices);
                 shadowDrawer.setColor(new Color(0, 0, 0, 0.5f));
@@ -91,7 +91,7 @@ public class PrettyPaintDemo extends ApplicationAdapter implements InputProcesso
                 Texture texture = new Texture("badlogic.jpg");
                 texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Linear);
 
-                textureDrawer = new PolygonTexture();
+                textureDrawer = new TexturePolygon();
                 textureDrawer.setTextureRegion(new TextureRegion(texture));
                 textureDrawer.setVertices(vertices);
 
