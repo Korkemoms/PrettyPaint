@@ -28,6 +28,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Interpolation;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
@@ -52,6 +53,8 @@ public class PrettyPaintDemo extends ApplicationAdapter implements InputProcesso
         TexturePolygon texturePolygon;
         OutlinePolygon shadowPolygon;
         OutlinePolygon outlinePolygon;
+
+        float accumulator = 0;
 
         @Override
         public void create() {
@@ -89,11 +92,12 @@ public class PrettyPaintDemo extends ApplicationAdapter implements InputProcesso
 
 
                 Texture texture = new Texture("badlogic.jpg");
-                texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Linear);
+                texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
 
                 texturePolygon = new TexturePolygon();
                 texturePolygon.setTextureRegion(new TextureRegion(texture));
                 texturePolygon.setVertices(vertices);
+
 
         }
 
@@ -101,6 +105,25 @@ public class PrettyPaintDemo extends ApplicationAdapter implements InputProcesso
         public void render() {
                 Gdx.gl20.glClearColor(1, 1, 1, 1);
                 Gdx.gl20.glClear(GL20.GL_COLOR_BUFFER_BIT);
+
+
+                accumulator += Gdx.graphics.getDeltaTime();
+                float sin = MathUtils.sin(accumulator % MathUtils.PI);
+
+                float scale = Interpolation.fade.apply(sin);
+                texturePolygon.setScale(scale);
+                shadowPolygon.setScale(scale);
+                outlinePolygon.setScale(scale);
+
+                float angleRad = Interpolation.pow2.apply(sin) * MathUtils.PI2;
+                texturePolygon.setAngleRad(angleRad);
+                shadowPolygon.setAngleRad(angleRad);
+                outlinePolygon.setAngleRad(angleRad);
+
+                float opacity = sin;
+                texturePolygon.setOpacity(opacity);
+                shadowPolygon.setOpacity(opacity);
+                outlinePolygon.setOpacity(opacity);
 
 
                 polygonBatch.begin(camera);
@@ -116,7 +139,7 @@ public class PrettyPaintDemo extends ApplicationAdapter implements InputProcesso
         @Override
         public void resize(int width, int height) {
 
-                camera.setToOrtho(false, 10, 10 * ((float)height / (float)width));
+                camera.setToOrtho(false, 10, 10 * ((float) height / (float) width));
                 camera.position.x = 0;
                 camera.position.y = 0;
 
@@ -178,8 +201,7 @@ public class PrettyPaintDemo extends ApplicationAdapter implements InputProcesso
         }
 
         /**
-         *
-         * @param zoom the cameras zoom will be set to this value.
+         * @param zoom    the cameras zoom will be set to this value.
          * @param screenX the screen x-coordinate you want to zoom in on(or away from).
          * @param screenY the screen y-coordinate you want to zoom in on(or away from).
          */
@@ -198,7 +220,6 @@ public class PrettyPaintDemo extends ApplicationAdapter implements InputProcesso
         }
 
         /**
-         *
          * @param screenX pixel.
          * @param screenY pixel.
          * @return position of touch in "world units", with center of screen as origin.
@@ -209,12 +230,12 @@ public class PrettyPaintDemo extends ApplicationAdapter implements InputProcesso
                 float halfHeight = Gdx.graphics.getHeight() * 0.5f;
 
                 Vector2 pos = new Vector2(screenX - halfWidth, halfHeight - screenY);
-                pos.scl(1f / halfWidth, 1f / halfWidth);
+                pos.scl(1f / halfWidth, 1f / halfHeight);
 
                 pos.scl(camera.zoom);
 
                 // convert to world units relative to center of screen
-                pos.scl(camera.viewportWidth *0.5f, camera.viewportHeight *0.5f);
+                pos.scl(camera.viewportWidth * 0.5f, camera.viewportHeight * 0.5f);
 
                 return pos;
         }
