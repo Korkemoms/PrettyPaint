@@ -26,7 +26,6 @@ package org.prettypaint;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Intersector;
-import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
@@ -50,7 +49,10 @@ public class OutlinePolygon implements PrettyPolygon {
 
 
         private final Array<Vector2> vertices = new Array<Vector2>(true, 1, Vector2.class);
-        private Array<Vector2> verticesRotatedAndTranslated = new Array<Vector2>(true, 4, Vector2.class);
+        private final Array<Vector2> verticesRotatedAndTranslated = new Array<Vector2>(true, 4, Vector2.class);
+        private final Array<Boolean> needsUpdate = new Array<Boolean>(true, 4, Boolean.class);
+        private final Array<StripVertex> vertexDataArray = new Array<StripVertex>(true, 4, StripVertex.class);
+
 
         private final AuxVertexFinder auxVertexFinder = new AuxVertexFinder();
         private final Vector2 tmp = new Vector2(), tmp1 = new Vector2(), tmp2 = new Vector2(), tmp3 = new Vector2();
@@ -73,7 +75,7 @@ public class OutlinePolygon implements PrettyPolygon {
         /** Instead of computing things each time we change a setting we wait until we have to. */
         private boolean needsVertexUpdateBeforeRendering = false;
 
-        private Array<BoundingBox> boundingBoxes = new Array<BoundingBox>();
+        private Array<BoundingBox> boundingBoxes = new Array<BoundingBox>(true, 4, BoundingBox.class);
 
         private PrettyPolygonBatch.DebugRenderer debugRenderer;
         private final Color debugFillGreen = new Color(0, 1, 0, 0.1f);
@@ -86,7 +88,7 @@ public class OutlinePolygon implements PrettyPolygon {
         private boolean drawOutside = true;
 
         /** I am unsure which value is optimal. */
-        private int verticesPerBoundingRectangle = 10;
+        private int verticesPerBox = 10;
 
         /**
          * Used by a parent to determine when it should draw. A parent draws
@@ -113,6 +115,8 @@ public class OutlinePolygon implements PrettyPolygon {
                                 debugDraw(shapeRenderer);
                         }
                 };
+
+                auxVertexFinder.setHalfWidth(this.halfWidth);
         }
 
         @Override
@@ -158,8 +162,6 @@ public class OutlinePolygon implements PrettyPolygon {
 
                         drawInvocations = 0;
 
-                        Rectangle frustum = this.frustum.set(batch.frustum);
-                        doHeavyWorkIfNeeded();
 
                         if (halfWidth <= 0) return this;
                         if (color.a <= 0) return this;
@@ -167,20 +169,28 @@ public class OutlinePolygon implements PrettyPolygon {
                         if (scale <= 0) return this;
                         if (!drawInside && !drawOutside) return this;
 
+                        Rectangle frustum = this.frustum.set(batch.frustum);
+
                         tmpColor.set(color).a *= opacity;
 
-                        for (BoundingBox br : boundingBoxes) {
+                        updateStripAndCulling();
 
-                                Rectangle cullingArea = getCullingArea(tmpRectangle, br.rectangle, angleRad, position, scale);
+
+                        for (BoundingBox box : boundingBoxes) {
+
+                                Rectangle cullingArea = getCullingArea(tmpRectangle, box.rectangle, angleRad, position, scale);
 
                                 if (frustum.overlaps(cullingArea)) {
                                         // if we reached here we can draw
 
                                         if (drawInside) {
-                                                batch.drawOutline(br.insideVertexData, 0, br.insideVertexData.size, tmpColor, scale, angleRad, position.x, position.y, weight);
+                                                batch.drawOutline(vertexDataArray, true, box.begin, box.begin + box.count+1,
+                                                        tmpColor, scale, angleRad, position.x, position.y, weight);
                                         }
+
                                         if (drawOutside) {
-                                                batch.drawOutline(br.outsideVertexData, 0, br.outsideVertexData.size, tmpColor, scale, angleRad, position.x, position.y, weight);
+                                                batch.drawOutline(vertexDataArray, false, box.begin, box.begin + box.count+1,
+                                                        tmpColor, scale, angleRad, position.x, position.y, weight);
                                         }
                                 }
                         }
@@ -188,146 +198,174 @@ public class OutlinePolygon implements PrettyPolygon {
                 return this;
         }
 
+        private void updateStripAndCulling() {
+                updateAllBoxIndices();
 
-        /**
-         * All the {@link BoundingBox}s created here contain {@code verticesPerRectangle}+2
-         * vertices, except the last one that may contain more or less.
-         * <p>
-         * There is some overlap: the first vertex in BoundingBox
-         * n is the same as the last vertex in BoundingBox n-1.
-         */
-        private Array<BoundingBox> createBoundingRectangles(Array<Vector2> vertices, int verticesPerRectangle) {
+                boolean clockwiseUpdated = false;
 
-                Array<BoundingBox> boundingRectangles = new Array<BoundingBox>(true, 4, BoundingBox.class);
-
-                // first create all the bounding rectangles with no overlapping
-                for (int i = 0; i < vertices.size; i++) {
-                        Vector2 v = vertices.items[i];
-
-                        boolean addNewRect = i % verticesPerRectangle == 0 && i <= vertices.size - verticesPerRectangle;
-                        addNewRect |= boundingRectangles.size == 0;
-
-                        if (addNewRect) {
-                                if (i > 0) {
-                                        boundingRectangles.peek().count = i - boundingRectangles.peek().begin + 1;
+                for (int i = 0; i < needsUpdate.size; i++) {
+                        boolean update = needsUpdate.items[i];
+                        if (update) {
+                                if (!clockwiseUpdated) {
+                                        clockwiseUpdated = true;
+                                        updateAuxVertexFinderClockwise();
                                 }
-                                boundingRectangles.add(new BoundingBox(new Rectangle(v.x, v.y, 0, 0), i));
-                        } else {
-                                Rectangle current = boundingRectangles.peek().rectangle;
-                                current.merge(v);
+                                updateVertex(i);
+                                needsUpdate.items[i] = false;
                         }
                 }
-                boundingRectangles.peek().count = vertices.size - boundingRectangles.peek().begin + (closedPolygon ? 1 : 0);
 
-                return boundingRectangles;
+                for (BoundingBox box : boundingBoxes) {
+                        if (box.needsCullingUpdate) {
+                                updateBoxCulling(box);
+                                box.needsCullingUpdate = false;
+                        }
+                }
         }
 
-        /** Builds the entire triangle strip (insideStrip, outside or both). */
-        private void buildTriangleStrips() {
-
-                Array<Vector2> vertices = this.vertices;
-                boolean drawInside = this.drawInside;
-                boolean drawOutside = this.drawOutside;
-                AuxVertexFinder auxVertexFinder = this.auxVertexFinder;
-
+        private void updateAuxVertexFinderClockwise() {
                 boolean clockwisePolygon = RenderUtil.clockwisePolygon(vertices);
                 auxVertexFinder.setClockwise(clockwisePolygon);
-                auxVertexFinder.setHalfWidth(this.halfWidth);
+        }
 
-                if (drawInside) { // setup insideStrip triangle strip
+        private void updateAllBoxIndices() {
+                while (boundingBoxes.size * verticesPerBox < vertices.size) {
+                        boundingBoxes.add(new BoundingBox(boundingBoxes.size * verticesPerBox, verticesPerBox));
+                }
+                while (boundingBoxes.size * verticesPerBox >= vertices.size + verticesPerBox) {
+                        boundingBoxes.pop();
+                }
+                if (boundingBoxes.size > 0 && boundingBoxes.size * verticesPerBox != vertices.size) {
+                        boundingBoxes.peek().count = (vertices.size % verticesPerBox);
+                }
+        }
+
+        private void updateBoxCulling(BoundingBox box) {
+                Rectangle rectangle = box.rectangle;
+
+                boolean initialized = false;
+                for (int n = box.begin; n < box.begin + box.count; n++) {
+
+                        Array<Float> inside = vertexDataArray.items[n].insideVertexData;
+                        Array<Float> outside = vertexDataArray.items[n].outsideVertexData;
+
+                        if (!initialized) {
+                                if (inside.size > 0) {
+                                        rectangle.set(inside.items[0], inside.items[1], 0, 0);
+                                } else if (outside.size > 0) {
+                                        rectangle.set(outside.items[0], outside.items[1], 0, 0);
+                                }
+
+                                int k = (box.begin - 1 + vertices.size) % vertices.size;
+                                rectangle.merge(vertices.items[k]);
+
+                                k = (box.begin + box.count + 1 + vertices.size) % vertices.size;
+                                rectangle.merge(vertices.items[k]);
+
+                                initialized = true;
+                        }
+
+                        for (int i = 0; i < inside.size; i += 3) {
+                                rectangle.merge(inside.items[i], inside.items[i + 1]);
+                        }
+
+                        for (int i = 0; i < outside.size; i += 3) {
+                                rectangle.merge(outside.items[i], outside.items[i + 1]);
+                        }
+                }
+
+
+        }
+
+        private void updateVertex(int index) {
+                BoundingBox box = boundingBoxes.items[index / verticesPerBox];
+                box.needsCullingUpdate = true;
+
+                int k = index % vertices.size;
+                StripVertex stripVertex = vertexDataArray.items[k];
+                AuxVertexFinder auxVertexFinder = this.auxVertexFinder;
+
+                if (drawInside) {
                         auxVertexFinder.setInsideStrip(true);
-                        buildStrip(auxVertexFinder);
+
+                        Array<Float> vertexData = stripVertex.insideVertexData;
+                        Vector2 currentVertex = vertices.items[k];
+                        add(currentVertex, VERTEX_TYPE_USER, vertexData);
+
+                        Vector2 currentAux = auxVertexFinder.getAux(vertices, k);
+                        add(currentAux, VERTEX_TYPE_AUX, vertexData);
+                }
+                if (drawOutside) {
+                        auxVertexFinder.setInsideStrip(false);
+
+                        Array<Float> vertexData = stripVertex.outsideVertexData;
+                        Vector2 currentVertex = vertices.items[k];
+                        add(currentVertex, VERTEX_TYPE_USER, vertexData);
+
+                        Vector2 currentAux = auxVertexFinder.getAux(vertices, k);
+                        add(currentAux, VERTEX_TYPE_AUX, vertexData);
                 }
 
-                if (drawOutside) { // setup outside triangle strip
-                        auxVertexFinder.setInsideStrip(false);
-                        buildStrip(auxVertexFinder);
-                }
+
         }
 
         /** Builds either the insideStrip or outside triangle strip. Depending on which AuxVertexFinder is given. */
         private void buildStrip(AuxVertexFinder auxVertexFinder) {
 
-                Vector2 v1 = new Vector2();
-
-                Array<Vector2> vertices = this.vertices;
-                boolean closedPolygon = this.closedPolygon;
-                Array<BoundingBox> boundingRectangles = this.boundingBoxes;
-                boolean inside = auxVertexFinder.insideStrip;
-
-                // build the triangle strip
-                for (int i = 0; i < boundingRectangles.size; i++) {
-                        // the triangle strips are split into BoundingRectangles
-                        // to allow for easy frustum culling
-                        BoundingBox br = boundingRectangles.get(i);
-
-                        Array<Float> vertexData = inside ? br.insideVertexData : br.outsideVertexData;
-
-                        for (int j = br.begin; j < br.begin + br.count; j++) {
-                                int k = j % vertices.size;
-
-                                Vector2 currentVertex = vertices.items[k];
-                                add(currentVertex, VERTEX_TYPE_USER, vertexData, br);
-
-                                Vector2 currentAux = auxVertexFinder.getAux(vertices, k);
-                                add(currentAux, VERTEX_TYPE_AUX, vertexData, br);
-                        }
-                }
-
-                if (!closedPolygon) {
+                /*if (!closedPolygon) {
                         // if polygon is not closed the endings must be fixed
                         {
                                 // round the ending
-                                BoundingBox br = boundingRectangles.peek();
-                                Array<Float> vertexData = inside ? br.insideVertexData : br.outsideVertexData;
+                                BoundingBox br = boundingBoxes.peek();
+                                Array<Float> vertexDataArray = inside ? br.insideVertexData : br.outsideVertexData;
 
-                                if (vertexData.size >= 6) {
-                                        vertexData.removeRange(vertexData.size - 6, vertexData.size - 1);
+                                if (vertexDataArray.size >= 6) {
+                                        vertexDataArray.removeRange(vertexDataArray.size - 6, vertexDataArray.size - 1);
                                 }
 
                                 int i = vertices.size - 1;
                                 Vector2 currentVertex = vertices.items[i];
 
                                 Vector2 currentAux = auxVertexFinder.getEndingAux(vertices, tmp, 0);
-                                add(currentVertex, VERTEX_TYPE_USER, vertexData, br);
-                                add(currentAux, VERTEX_TYPE_AUX, vertexData, br);
+                                add(currentVertex, VERTEX_TYPE_USER, vertexDataArray, br);
+                                add(currentAux, VERTEX_TYPE_AUX, vertexDataArray, br);
 
                                 currentAux = auxVertexFinder.getEndingAux(vertices, tmp, MathUtils.PI * 0.25f);
-                                add(currentVertex, VERTEX_TYPE_USER, vertexData, br);
-                                add(currentAux, VERTEX_TYPE_AUX, vertexData, br);
+                                add(currentVertex, VERTEX_TYPE_USER, vertexDataArray, br);
+                                add(currentAux, VERTEX_TYPE_AUX, vertexDataArray, br);
 
                                 currentAux = auxVertexFinder.getEndingAux(vertices, tmp, MathUtils.PI * 0.5f);
-                                add(currentVertex, VERTEX_TYPE_USER, vertexData, br);
-                                add(currentAux, VERTEX_TYPE_AUX, vertexData, br);
+                                add(currentVertex, VERTEX_TYPE_USER, vertexDataArray, br);
+                                add(currentAux, VERTEX_TYPE_AUX, vertexDataArray, br);
 
                         }
 
                         {
                                 // round the beginning
-                                BoundingBox br = boundingRectangles.first();
-                                Array<Float> vertexData = inside ? br.insideVertexData : br.outsideVertexData;
+                                BoundingBox br = boundingBoxes.first();
+                                Array<Float> vertexDataArray = inside ? br.insideVertexData : br.outsideVertexData;
 
-                                if (vertexData.size >= 6) {
-                                        vertexData.removeRange(0, 5);
+                                if (vertexDataArray.size >= 6) {
+                                        vertexDataArray.removeRange(0, 5);
                                 }
 
                                 int i = 0;
                                 Vector2 currentVertex = vertices.items[i];
 
                                 Vector2 currentAux = auxVertexFinder.getBeginningAux(vertices, tmp, 0);
-                                insert(currentAux, VERTEX_TYPE_AUX, vertexData, br);
-                                insert(currentVertex, VERTEX_TYPE_USER, vertexData, br);
+                                insert(currentAux, VERTEX_TYPE_AUX, vertexDataArray, br);
+                                insert(currentVertex, VERTEX_TYPE_USER, vertexDataArray, br);
 
                                 currentAux = auxVertexFinder.getBeginningAux(vertices, tmp, MathUtils.PI * 0.25f);
-                                insert(currentAux, VERTEX_TYPE_AUX, vertexData, br);
-                                insert(currentVertex, VERTEX_TYPE_USER, vertexData, br);
+                                insert(currentAux, VERTEX_TYPE_AUX, vertexDataArray, br);
+                                insert(currentVertex, VERTEX_TYPE_USER, vertexDataArray, br);
 
                                 currentAux = auxVertexFinder.getBeginningAux(vertices, tmp, MathUtils.PI * 0.5f);
-                                insert(currentAux, VERTEX_TYPE_AUX, vertexData, br);
-                                insert(currentVertex, VERTEX_TYPE_USER, vertexData, br);
+                                insert(currentAux, VERTEX_TYPE_AUX, vertexDataArray, br);
+                                insert(currentVertex, VERTEX_TYPE_USER, vertexDataArray, br);
 
                         }
-                }
+                }*/
 
 
         }
@@ -364,6 +402,7 @@ public class OutlinePolygon implements PrettyPolygon {
                 /** The width of the inside or outside strip. */
                 void setHalfWidth(float halfWidth) {
                         this.halfWidth = halfWidth;
+
                 }
 
                 private Vector2 getAuxBasic(Array<Vector2> vertices, int i) {
@@ -381,10 +420,7 @@ public class OutlinePolygon implements PrettyPolygon {
                         n2.add(nor2);
 
                         Vector2 result = new Vector2();
-                        boolean success = Intersector.intersectLines(m1, m2, n1, n2, result);
-
-
-                        if (!success) System.out.println(vertices);
+                        Intersector.intersectLines(m1, m2, n1, n2, result);
 
                         return result;
 
@@ -396,10 +432,7 @@ public class OutlinePolygon implements PrettyPolygon {
                  * one of these for each vertex set by the user.
                  */
                 private Vector2 getAux(Array<Vector2> vertices, int i) {
-
-                        Vector2 basic = getAuxBasic(vertices, i);
-
-                        return basic;
+                        return getAuxBasic(vertices, i);
 
                 }
 
@@ -448,6 +481,7 @@ public class OutlinePolygon implements PrettyPolygon {
         public OutlinePolygon setHalfWidth(float halfWidth) {
                 this.halfWidth = halfWidth;
                 needsVertexUpdateBeforeRendering = true;
+                auxVertexFinder.setHalfWidth(this.halfWidth);
                 return this;
         }
 
@@ -497,25 +531,6 @@ public class OutlinePolygon implements PrettyPolygon {
                 return drawOutside;
         }
 
-        /**
-         * When instantiating or changing settings some tasks may be scheduled to be
-         * done before the next {@link #draw(PrettyPolygonBatch)} call. If you wish you can call this
-         * method to do these tasks right away. It can be a good idea to call this method after you are done configuring
-         * this object, but before you exit your loading screen.
-         *
-         * @return this for chaining.
-         */
-        public OutlinePolygon doHeavyWorkIfNeeded() {
-                if (needsVertexUpdateBeforeRendering) {
-                        needsVertexUpdateBeforeRendering = false;
-
-                        this.boundingBoxes = createBoundingRectangles(vertices, verticesPerBoundingRectangle);
-                        buildTriangleStrips();
-                }
-
-                return this;
-        }
-
 
         public Array<Vector2> getVerticesRotatedAndTranslated() {
 
@@ -543,6 +558,17 @@ public class OutlinePolygon implements PrettyPolygon {
                         this.vertices.add(new Vector2(v));
                 }
 
+                this.needsUpdate.clear();
+                for (Vector2 v : vertices) {
+                        this.needsUpdate.add(true);
+                }
+
+                this.vertexDataArray.clear();
+                for (Vector2 v : vertices) {
+                        this.vertexDataArray.add(new StripVertex());
+                }
+
+
                 this.verticesRotatedAndTranslated.clear();
                 for (Vector2 v : vertices) {
                         this.verticesRotatedAndTranslated.add(new Vector2(v));
@@ -552,22 +578,11 @@ public class OutlinePolygon implements PrettyPolygon {
         }
 
 
-
-
         /** Set the data for one vertex. Also merges this vertex with the BoundingBox's rectangle. */
-        private void add(Vector2 vertex, float alpha, Array<Float> vertexData, BoundingBox br) {
+        private void add(Vector2 vertex, float alpha, Array<Float> vertexData) {
                 vertexData.add(vertex.x);
                 vertexData.add(vertex.y);
                 vertexData.add(alpha);
-                br.rectangle.merge(vertex);
-        }
-
-        /** Set the data for one stripVertex. */
-        private void insert(Vector2 vertex, float alpha, Array<Float> vertexData, BoundingBox br) {
-                vertexData.insert(0, alpha);
-                vertexData.insert(0, vertex.y);
-                vertexData.insert(0, vertex.x);
-                br.rectangle.merge(vertex);
         }
 
 
@@ -783,6 +798,7 @@ public class OutlinePolygon implements PrettyPolygon {
                 if (drawLineFromFirstToLastForDebugDraw) {
                         shapeRenderer.setColor(Color.BLUE);
                         for (BoundingBox br : boundingBoxes) {
+
                                 tmp.set(vertices.items[br.begin]);
                                 tmp.rotateRad(angleRad);
                                 tmp.scl(scale);
@@ -791,7 +807,7 @@ public class OutlinePolygon implements PrettyPolygon {
 
                                 tmp1.set(vertices.items[(br.begin + br.count) % vertices.size]);
                                 tmp1.rotateRad(angleRad);
-                                tmp.scl(scale);
+                                tmp1.scl(scale);
                                 tmp1.add(position);
 
                                 shapeRenderer.line(tmp, tmp1);
@@ -800,7 +816,7 @@ public class OutlinePolygon implements PrettyPolygon {
                 }
 
 
-                if (drawTriangleStripsForDebugDraw) {
+                /*if (drawTriangleStripsForDebugDraw) {
                         shapeRenderer.setColor(Color.ORANGE);
 
                         for (BoundingBox bb : boundingBoxes) {
@@ -842,7 +858,7 @@ public class OutlinePolygon implements PrettyPolygon {
                                 }
 
                         }
-                }
+                }*/
         }
 
 
@@ -855,24 +871,33 @@ public class OutlinePolygon implements PrettyPolygon {
          */
         public static class BoundingBox {
                 /** The actual bounding rectangle */
-                Rectangle rectangle;
+                Rectangle rectangle = new Rectangle();
 
                 /** Index of the first vertex that this bounding rectangle include. */
                 int begin;
                 /** The number of vertices that this bounding rectangle include. */
                 int count;
 
-                /** Triangle strip for the insideStrip part */
+                boolean needsCullingUpdate = false;
+
+
+                BoundingBox(int begin, int count) {
+                        this.begin = begin;
+                        this.count = count;
+                }
+
+                void recomputeRectangle(Array<StripVertex> vertices) {
+
+                }
+
+        }
+
+        public static class StripVertex {
+
                 Array<Float> insideVertexData = new Array<Float>(true, 20, Float.class);
 
-                /** Triangle strip for the outside part. */
                 Array<Float> outsideVertexData = new Array<Float>(true, 20, Float.class);
 
-
-                BoundingBox(Rectangle r, int begin) {
-                        this.rectangle = r;
-                        this.begin = begin;
-                }
 
         }
 }

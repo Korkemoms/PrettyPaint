@@ -295,7 +295,8 @@ public class PrettyPolygonBatch {
          * Used by OutlinePolygon to draw triangle strips. These triangle strips
          * form anti-aliased polygon outlines.
          *
-         * @param vertexData    [x, y, VERTEX_TYPE, x, y, VERTEX_TYPE, ...]
+         * @param stripVertexes
+         * @param inside
          * @param begin         the index in {@code vertexData} to begin at(inclusive)
          * @param end           the index in {@code vertexData} to stop at(not inclusive)
          * @param color         the color of the outline
@@ -305,7 +306,7 @@ public class PrettyPolygonBatch {
          * @param translation_y how much to translate the outline vertically
          * @param weight        the weight of the outline(higher gives bolder edges)
          */
-        protected void drawOutline(Array<Float> vertexData, int begin, int end, Color color, float scale, float angleRad,
+        protected void drawOutline(Array<OutlinePolygon.StripVertex> stripVertexes, boolean inside, int begin, int end, Color color, float scale, float angleRad,
                                    float translation_x, float translation_y, float weight) {
                 if (!isStarted) throw new RuntimeException("You must call begin() before calling this method.");
 
@@ -316,7 +317,8 @@ public class PrettyPolygonBatch {
                 // this color is used for all the aux vertices
                 float colorInvisibleAsFloatBits = tempColor.toFloatBits();
 
-                float vertexCount = (end - begin) / 3f;
+
+                float vertexCount = end - begin;
                 float degenerateVertexCount = 2;
                 float totalData = dataPerVertex * (vertexCount + degenerateVertexCount);
 
@@ -326,59 +328,75 @@ public class PrettyPolygonBatch {
 
                 Vector2 pos = tempVector;
 
-                pos.x = vertexData.items[begin] * scale;
-                pos.y = vertexData.items[begin + 1] * scale;
-                pos.rotateRad(angleRad);
-                pos.x += translation_x;
-                pos.y += translation_y;
-
-                // degenerate in order to travel from the previous vertex without drawing anything
-                dataCount = setOutlineVertexData(pos.x, pos.y, colorInvisibleAsFloatBits, dataCount, weight);
+                { // degenerate in order to travel from the previous vertex without drawing anything
+                        OutlinePolygon.StripVertex stripVertex = stripVertexes.items[begin];
+                        Array<Float> vertexData = inside ? stripVertex.insideVertexData : stripVertex.outsideVertexData;
 
 
-                for (int i = begin; i < end; ) {
-
-                        pos.x = vertexData.items[i++] * scale;
-                        pos.y = vertexData.items[i++] * scale;
+                        pos.x = vertexData.items[0] * scale;
+                        pos.y = vertexData.items[1] * scale;
                         pos.rotateRad(angleRad);
                         pos.x += translation_x;
                         pos.y += translation_y;
 
-                        // the vertex type is either VERTEX_TYPE_USER(1)
-                        // or VERTEX_TYPE_AUX(0)
-                        float VERTEX_TYPE = vertexData.items[i++];
 
-                        // when its an aux vertex the opacity is set to 0
-                        float _colorAsFloatBits = getColor(VERTEX_TYPE, colorAsFloatBits, colorInvisibleAsFloatBits);
-
-                        dataCount = setOutlineVertexData(pos.x, pos.y, _colorAsFloatBits, dataCount, weight);
-
+                        dataCount = setOutlineVertexData(pos.x, pos.y, colorInvisibleAsFloatBits, dataCount, weight);
                 }
 
-                pos.x = vertexData.items[end - 3] * scale;
-                pos.y = vertexData.items[end - 2] * scale;
-                pos.rotateRad(angleRad);
-                pos.x += translation_x;
-                pos.y += translation_y;
+                for (int i = begin; i < end; i++) {
 
-                // degenerate in order to travel to the next vertex without drawing anything
-                dataCount = setOutlineVertexData(pos.x, pos.y, colorInvisibleAsFloatBits, dataCount, weight);
+                        int k = i % stripVertexes.size;
+
+                        OutlinePolygon.StripVertex stripVertex = stripVertexes.items[k];
+                        Array<Float> vertexData = inside ? stripVertex.insideVertexData : stripVertex.outsideVertexData;
+
+
+                        for (int j = 0; j < vertexData.size; ) {
+                                pos.x = vertexData.items[j++] * scale;
+                                pos.y = vertexData.items[j++] * scale;
+                                pos.rotateRad(angleRad);
+                                pos.x += translation_x;
+                                pos.y += translation_y;
+
+                                float _colorAsFloatBits = getColor(vertexData.items[j++], colorAsFloatBits, colorInvisibleAsFloatBits);
+
+                                dataCount = setOutlineVertexData(pos.x, pos.y, _colorAsFloatBits, dataCount, weight);
+
+                        }
+                }
+
+                { // degenerate in order to travel from the previous vertex without drawing anything
+
+                        int k = (end - 1) % stripVertexes.size;
+
+                        OutlinePolygon.StripVertex stripVertex = stripVertexes.items[k];
+                        Array<Float> vertexData = inside ? stripVertex.insideVertexData : stripVertex.outsideVertexData;
+
+                        pos.x = vertexData.items[vertexData.size - 3] * scale;
+                        pos.y = vertexData.items[vertexData.size - 2] * scale;
+                        pos.rotateRad(angleRad);
+                        pos.x += translation_x;
+                        pos.y += translation_y;
+
+
+                        dataCount = setOutlineVertexData(pos.x, pos.y, colorInvisibleAsFloatBits, dataCount, weight);
+                }
 
         }
 
         /** Append the information about this vertex to the data array. */
-        private int setOutlineVertexData(float x, float y, float colorAsFloatBits, int dataSet, float weight) {
+        private int setOutlineVertexData(float x, float y, float colorAsFloatBits, int dataCount, float weight) {
                 // so much overhead :(
-                data[dataSet++] = x;
-                data[dataSet++] = y;
-                data[dataSet++] = colorAsFloatBits;
-                data[dataSet++] = 0f;
-                data[dataSet++] = 0f;
-                data[dataSet++] = weight;
-                data[dataSet++] = 0f;
-                data[dataSet++] = -1f;
+                data[dataCount++] = x;
+                data[dataCount++] = y;
+                data[dataCount++] = colorAsFloatBits;
+                data[dataCount++] = 0f;
+                data[dataCount++] = 0f;
+                data[dataCount++] = weight;
+                data[dataCount++] = 0f;
+                data[dataCount++] = -1f;
 
-                return dataSet;
+                return dataCount;
         }
 
         /**
@@ -449,7 +467,7 @@ public class PrettyPolygonBatch {
          * A {@link PrettyPolygon} add a DebugRenderer to {@link #debugRendererArray}.
          * It will then have its {@link #draw(ShapeRenderer)} method called after the
          * batch is done drawing its normal things.
-         *
+         * <p>
          * This is a public class because GWT doesn't want to compile otherwise.
          */
         public static class DebugRenderer {
