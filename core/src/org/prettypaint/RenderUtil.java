@@ -15,9 +15,8 @@ import org.poly2tri.triangulation.delaunay.DelaunayTriangle;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Created by Andreas on 12.10.2015.
- */
+
+// TODO Comment
 public class RenderUtil {
 
         public static final double scale = 1000000;

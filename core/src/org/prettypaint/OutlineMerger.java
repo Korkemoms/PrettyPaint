@@ -6,15 +6,15 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import org.clipper.*;
 
-/**
- * Created by Andreas on 12.10.2015.
- */
+
+// TODO Comment
 public class OutlineMerger {
 
         private Array<Array<Vector2>> debug = new Array<Array<Vector2>>();
 
         private PrettyPolygonBatch.DebugRenderer debugRenderer;
 
+        // TODO Comment
         public OutlineMerger() {
                 debugRenderer = new PrettyPolygonBatch.DebugRenderer(null) {
                         @Override
@@ -25,6 +25,7 @@ public class OutlineMerger {
         }
 
 
+        // TODO Comment
         public OutlineMerger setDrawDebugInfo(PrettyPolygonBatch batch, boolean debugDraw) {
                 if (debugDraw) {
                         if (!batch.debugRendererArray.contains(debugRenderer, true))
@@ -36,14 +37,17 @@ public class OutlineMerger {
                 return this;
         }
 
+        // TODO Comment
         public boolean isDrawingDebugInfo(PrettyPolygonBatch batch) {
                 return batch.debugRendererArray.contains(debugRenderer, true);
         }
 
+        // TODO Comment
         public void clearDebugLines() {
                 debug.clear();
         }
 
+        // TODO Comment
         private void debugDraw(ShapeRenderer shapeRenderer) {
                 Vector2 tmp = new Vector2();
                 Vector2 tmp1 = new Vector2();
@@ -77,6 +81,7 @@ public class OutlineMerger {
                 }
         }
 
+        // TODO Comment
         public void mergeOutlines(Array<OutlinePolygon> toMerge, boolean verbose) {
                 if (toMerge.size == 0) return;
                 long begin = System.currentTimeMillis();

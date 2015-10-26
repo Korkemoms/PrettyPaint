@@ -45,17 +45,17 @@ public class TextureAligner {
                 }
         }
 
+        // TODO Comment
         public Vector2 getExtraTranslation() {
                 return extraTranslation;
         }
 
+        // TODO Comment
         public void setExtraTranslation(Vector2 extraTranslation) {
                 this.extraTranslation.set(extraTranslation);
         }
 
-        /**
-         * T
-         */
+        // TODO Comment
         public void setExtraTranslation(float x, float y) {
                 this.extraTranslation.set(x, y);
         }

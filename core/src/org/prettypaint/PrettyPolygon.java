@@ -118,7 +118,9 @@ public interface PrettyPolygon {
          */
         long getTimeOfLastDrawCall();
 
+        // TODO Comment
         PrettyPolygon setOpacity(float opacity);
 
+        // TODO Comment
         float getOpacity();
 }

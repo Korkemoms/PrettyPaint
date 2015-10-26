@@ -34,9 +34,8 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 
 
-/**
- * @author Andreas
- */
+
+// TODO Clean and comment
 public class Background {
 
         /**
