@@ -27,11 +27,14 @@ import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.graphics.*;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Interpolation;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import org.prettypaint.OutlinePolygon;
 import org.prettypaint.PrettyPolygonBatch;
+import org.prettypaint.TexturePolygon;
 
 /**
  * This is a demo showing how to use PrettyPaint to draw a pretty polygon.
@@ -45,49 +48,62 @@ public class PrettyPaintDemo extends ApplicationAdapter implements InputProcesso
         Vector2 lastWorldTouchDown;
         Vector2 cameraPositionAtLastWorldTouch;
 
+
         PrettyPolygonBatch polygonBatch;
-        OutlinePolygon segment;
-        OutlinePolygon dot;
+        TexturePolygon texturePolygon;
+        OutlinePolygon shadowPolygon;
+        OutlinePolygon outlinePolygon;
 
+        float accumulator = 0;
 
-
+        Array<Vector2> vertices = new Array<Vector2>();
 
         @Override
         public void create() {
                 Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
                 Gdx.input.setInputProcessor(this);
 
-
                 float w = Gdx.graphics.getWidth();
                 float h = Gdx.graphics.getHeight();
                 camera = new OrthographicCamera(10, 10 * (h / w));
 
+                // create the vertices used for all 3 polygons
+
+                float radius = 2f;
+                Vector2 v = new Vector2(radius, 0);
+                float angle = MathUtils.PI2 / 50f;
+                for (float rad = 0; rad <= MathUtils.PI2; rad += angle) {
+                        v.rotateRad(angle);
+                        vertices.add(new Vector2(v).scl(MathUtils.random(1f, 2f)));
+                }
+
 
                 polygonBatch = new PrettyPolygonBatch();
 
-                {
-                        segment = new OutlinePolygon();
-                        Array<Vector2> vertices = new Array<Vector2>();
-                        vertices.add(new Vector2());
-                        vertices.add(new Vector2());
 
-                        segment.setVertices(vertices);
-                }
+                outlinePolygon = new OutlinePolygon();
+                outlinePolygon.setVertices(vertices);
+                outlinePolygon.setColor(Color.BLACK);
 
-                {
-                        dot = new OutlinePolygon();
-                        dot.setHalfWidth(0.1f);
-                        dot.setWeight(2);
-                        Array<Vector2> vertices = new Array<Vector2>();
-                        float n = 12;
-                        Vector2 vertex = new Vector2(dot.getHalfWidth(), 0);
-                        for (float i = 0; i < n; i++) {
-                                vertex.rotateRad(MathUtils.PI2 / n);
-                                vertices.add(new Vector2(vertex));
-                        }
 
-                        dot.setVertices(vertices);
-                }
+                shadowPolygon = new OutlinePolygon();
+                shadowPolygon.setDrawInside(false);
+                shadowPolygon.setVertices(vertices);
+                shadowPolygon.setColor(new Color(0, 0, 0, 0.4f));
+                shadowPolygon.setHalfWidth(outlinePolygon.getHalfWidth() * 5);
+
+                //shadowPolygon.setDrawDebugInfo(polygonBatch,true);
+                //shadowPolygon.setDrawBoundingBoxesForDebugDraw(true);
+                //shadowPolygon.setDrawTriangleStripsForDebugDraw(false);
+                //shadowPolygon.setDrawLineFromFirstToLastForDebugDraw(true);
+
+
+                Texture texture = new Texture("badlogic.jpg");
+                texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+
+                texturePolygon = new TexturePolygon();
+                texturePolygon.setTextureRegion(new TextureRegion(texture));
+                texturePolygon.setVertices(vertices);
 
 
         }
@@ -97,10 +113,30 @@ public class PrettyPaintDemo extends ApplicationAdapter implements InputProcesso
                 Gdx.gl20.glClearColor(1, 1, 1, 1);
                 Gdx.gl20.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-                polygonBatch.begin(camera);
-                segment.draw(polygonBatch);
-                dot.draw(polygonBatch);
 
+                accumulator += Gdx.graphics.getDeltaTime();
+                float sin = MathUtils.sin(accumulator % MathUtils.PI);
+
+                /*float scale = Interpolation.fade.apply(sin);
+                texturePolygon.setScale(scale);
+                shadowPolygon.setScale(scale);
+                outlinePolygon.setScale(scale);
+
+                float angleRad = Interpolation.fade.apply(sin) * MathUtils.PI2 * 2;
+                texturePolygon.setAngleRad(angleRad);
+                shadowPolygon.setAngleRad(angleRad);
+                outlinePolygon.setAngleRad(angleRad);
+
+                float opacity = sin;
+                texturePolygon.setOpacity(opacity);
+                shadowPolygon.setOpacity(opacity);
+                outlinePolygon.setOpacity(opacity);*/
+
+
+                polygonBatch.begin(camera);
+                texturePolygon.draw(polygonBatch);
+                shadowPolygon.draw(polygonBatch);
+                outlinePolygon.draw(polygonBatch);
                 polygonBatch.end();
         }
 
@@ -119,9 +155,9 @@ public class PrettyPaintDemo extends ApplicationAdapter implements InputProcesso
 
         @Override
         public boolean keyDown(int keycode) {
-
-
-                return true;
+                vertices.pop();
+                shadowPolygon.setVertices(vertices);
+                return false;
         }
 
         @Override
