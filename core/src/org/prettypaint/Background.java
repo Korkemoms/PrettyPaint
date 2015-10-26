@@ -292,7 +292,7 @@ public class Background {
         }
 
 
-        public static enum TRIANGULATION_TYPE {
+        public enum TRIANGULATION_TYPE {
                 PIZZA,
                 POLY2TRI;
         }

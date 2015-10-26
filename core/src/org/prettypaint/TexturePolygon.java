@@ -134,7 +134,6 @@ public class TexturePolygon implements PrettyPolygon {
 
                 }
                 this.textureAngleRad = textureAngleRad;
-
         }
 
         /** Set the texture to be upright at the polygons current angle. */
