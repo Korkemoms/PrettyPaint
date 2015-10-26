@@ -73,9 +73,6 @@ public class OutlinePolygon implements PrettyPolygon {
         private float halfWidth = 0.02f;
         private float opacity = 1;
 
-        /** Instead of computing things each time we change a setting we wait until we have to. */
-        private boolean needsVertexUpdateBeforeRendering = false;
-
         private Array<BoundingBox> boundingBoxes = new Array<BoundingBox>(true, 4, BoundingBox.class);
 
         private PrettyPolygonBatch.DebugRenderer debugRenderer;
@@ -380,14 +377,14 @@ public class OutlinePolygon implements PrettyPolygon {
                         float dst1 = currentVertex.dst(previous);
                         float dst2 = currentVertex.dst(next);
 
-                        float maxDst = Math.max(dst1, dst2);
+                        /*float maxDst = Math.max(dst1, dst2);
 
                         float currentDst = currentVertex.dst(defaultAux);
 
                         if (currentDst > maxDst) {
                                 tmp3.set(defaultAux).sub(currentVertex).nor().scl(maxDst);
                                 defaultAux.set(currentVertex).add(tmp3);
-                        }
+                        }*/
 
                         add(currentVertex, VERTEX_TYPE_USER, vertexData);
                         add(defaultAux, VERTEX_TYPE_AUX, vertexData);
@@ -585,7 +582,6 @@ public class OutlinePolygon implements PrettyPolygon {
          */
         public OutlinePolygon setHalfWidth(float halfWidth) {
                 this.halfWidth = halfWidth;
-                needsVertexUpdateBeforeRendering = true;
                 auxVertexFinder.setHalfWidth(this.halfWidth);
                 return this;
         }
@@ -598,7 +594,6 @@ public class OutlinePolygon implements PrettyPolygon {
          * @return this for chaining.
          */
         public OutlinePolygon setDrawInside(boolean drawInside) {
-                needsVertexUpdateBeforeRendering = true;
                 this.drawInside = drawInside;
                 return this;
         }
@@ -621,7 +616,6 @@ public class OutlinePolygon implements PrettyPolygon {
          * @return this for chaining.
          */
         public OutlinePolygon setDrawOutside(boolean drawOutside) {
-                needsVertexUpdateBeforeRendering = true;
                 this.drawOutside = drawOutside;
                 return this;
         }
@@ -657,8 +651,7 @@ public class OutlinePolygon implements PrettyPolygon {
         @Override
         public final OutlinePolygon setVertices(Array<Vector2> vertices) {
 
-                needsVertexUpdateBeforeRendering = true;
-
+                this.boundingBoxes.clear();
 
                 this.vertices.clear();
                 for (Vector2 v : vertices) {
@@ -813,7 +806,6 @@ public class OutlinePolygon implements PrettyPolygon {
         public OutlinePolygon setClosedPolygon(boolean closedPolygon) {
                 boolean change = this.closedPolygon != closedPolygon;
 
-                needsVertexUpdateBeforeRendering = true;
                 this.closedPolygon = closedPolygon;
 
                 if (change) {

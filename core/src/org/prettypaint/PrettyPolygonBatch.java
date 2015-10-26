@@ -320,19 +320,32 @@ public class PrettyPolygonBatch {
                 // this color is used for all the aux vertices
                 float colorInvisibleAsFloatBits = tempColor.toFloatBits();
 
-
-                // this is wrong
-                float vertexCount = end - begin;
-                float degenerateVertexCount = 2;
-                float totalData = dataPerVertex * (vertexCount + degenerateVertexCount);
-
-                if (dataCount + totalData > maxData) {
-                        flush();
-                }
-
                 Vector2 pos = tempVector;
 
-                if (!closed && end >= stripVertices.size) end--;
+                // fixing a problem i don't understand:
+                if (!closed && end >= stripVertices.size) {
+                        end = stripVertices.size;
+                }
+
+                {
+
+                        OutlinePolygon.StripVertex stripVertex = stripVertices.items[begin];
+                        Array<Float> vertexData = inside ? stripVertex.insideVertexData : stripVertex.outsideVertexData;
+
+                        float totalData = dataPerVertex;
+                        if (dataCount + totalData > maxData) {
+                                flush();
+                        }
+
+                        pos.x = vertexData.items[0] * scale;
+                        pos.y = vertexData.items[1] * scale;
+                        pos.rotateRad(angleRad);
+                        pos.x += translation_x;
+                        pos.y += translation_y;
+
+                        dataCount = setOutlineVertexData(pos.x, pos.y, colorInvisibleAsFloatBits, dataCount, weight);
+                }
+
 
                 for (int i = begin; i < end; i++) {
 
@@ -341,9 +354,16 @@ public class PrettyPolygonBatch {
                         OutlinePolygon.StripVertex stripVertex = stripVertices.items[k];
                         Array<Float> vertexData = inside ? stripVertex.insideVertexData : stripVertex.outsideVertexData;
 
-
+                        // fixing a problem i don't understand:
                         int n = i >= end - 1 ? 4 : vertexData.size;
-                        if (!closed && i >= stripVertices.size - 1) n = vertexData.size;
+                        if (!closed && i >= stripVertices.size - 1 && (end - begin) > 1) n = vertexData.size;
+
+
+                        float vertexCount = n / 3f;
+                        float totalData = dataPerVertex * vertexCount;
+                        if (dataCount + totalData > maxData) {
+                                flush();
+                        }
 
                         for (int j = 0; j < n; ) {
                                 pos.x = vertexData.items[j++] * scale;
@@ -354,15 +374,20 @@ public class PrettyPolygonBatch {
 
                                 float _colorAsFloatBits = getColor(vertexData.items[j++], colorAsFloatBits, colorInvisibleAsFloatBits);
 
-                                if (j == 3 && i == begin) {
-                                        dataCount = setOutlineVertexData(pos.x, pos.y, colorInvisibleAsFloatBits, dataCount, weight);
-                                }
                                 dataCount = setOutlineVertexData(pos.x, pos.y, _colorAsFloatBits, dataCount, weight);
                         }
                 }
 
-                // degenerate in order to travel from the previous vertex without drawing anything
-                dataCount = setOutlineVertexData(pos.x, pos.y, colorInvisibleAsFloatBits, dataCount, weight);
+                { // degenerate in order to travel from the previous vertex without drawing anything
+                        float totalData = dataPerVertex;
+                        if (dataCount + totalData > maxData) {
+                                flush();
+                        }
+
+                        dataCount = setOutlineVertexData(pos.x, pos.y, colorInvisibleAsFloatBits, dataCount, weight);
+                }
+
+
         }
 
         /** Append the information about this vertex to the data array. */
