@@ -47,6 +47,7 @@ public class PrettyPolygonBatch {
         private final float[] data = new float[maxData];
 
         private final Vector2 tempVector = new Vector2();
+
         private final Color tempColor = new Color();
 
         /** I save the worldview for debugging, */
@@ -154,6 +155,7 @@ public class PrettyPolygonBatch {
                 }
         }
 
+        // TODO Comment
         public void end() {
                 isStarted = false;
                 flush();
@@ -200,6 +202,7 @@ public class PrettyPolygonBatch {
                 return drawDebugInfo;
         }
 
+        // TODO Comment
         protected void drawTexture(PolygonRegion region, float pos_x, float pos_y, float width, float height,
                                    float scaleX, float scaleY, float rotation, float texture_pos_x, float texture_pos_y, float tex_trans_x,
                                    float tex_trans_y, float tex_width_and_height, float opacity) {
@@ -295,7 +298,7 @@ public class PrettyPolygonBatch {
          * Used by OutlinePolygon to draw triangle strips. These triangle strips
          * form anti-aliased polygon outlines.
          *
-         * @param stripVertexes
+         * @param stripVertices
          * @param inside
          * @param begin         the index in {@code vertexData} to begin at(inclusive)
          * @param end           the index in {@code vertexData} to stop at(not inclusive)
@@ -306,7 +309,7 @@ public class PrettyPolygonBatch {
          * @param translation_y how much to translate the outline vertically
          * @param weight        the weight of the outline(higher gives bolder edges)
          */
-        protected void drawOutline(Array<OutlinePolygon.StripVertex> stripVertexes, boolean inside, int begin, int end, Color color, float scale, float angleRad,
+        protected void drawOutline(Array<OutlinePolygon.StripVertex> stripVertices, boolean closed, boolean inside, int begin, int end, Color color, float scale, float angleRad,
                                    float translation_x, float translation_y, float weight) {
                 if (!isStarted) throw new RuntimeException("You must call begin() before calling this method.");
 
@@ -318,6 +321,7 @@ public class PrettyPolygonBatch {
                 float colorInvisibleAsFloatBits = tempColor.toFloatBits();
 
 
+                // this is wrong
                 float vertexCount = end - begin;
                 float degenerateVertexCount = 2;
                 float totalData = dataPerVertex * (vertexCount + degenerateVertexCount);
@@ -328,30 +332,20 @@ public class PrettyPolygonBatch {
 
                 Vector2 pos = tempVector;
 
-                { // degenerate in order to travel from the previous vertex without drawing anything
-                        OutlinePolygon.StripVertex stripVertex = stripVertexes.items[begin];
-                        Array<Float> vertexData = inside ? stripVertex.insideVertexData : stripVertex.outsideVertexData;
-
-
-                        pos.x = vertexData.items[0] * scale;
-                        pos.y = vertexData.items[1] * scale;
-                        pos.rotateRad(angleRad);
-                        pos.x += translation_x;
-                        pos.y += translation_y;
-
-
-                        dataCount = setOutlineVertexData(pos.x, pos.y, colorInvisibleAsFloatBits, dataCount, weight);
-                }
+                if (!closed && end >= stripVertices.size) end--;
 
                 for (int i = begin; i < end; i++) {
 
-                        int k = i % stripVertexes.size;
+                        int k = i % stripVertices.size;
 
-                        OutlinePolygon.StripVertex stripVertex = stripVertexes.items[k];
+                        OutlinePolygon.StripVertex stripVertex = stripVertices.items[k];
                         Array<Float> vertexData = inside ? stripVertex.insideVertexData : stripVertex.outsideVertexData;
 
 
-                        for (int j = 0; j < vertexData.size; ) {
+                        int n = i >= end - 1 ? 4 : vertexData.size;
+                        if (!closed && i >= stripVertices.size - 1) n = vertexData.size;
+
+                        for (int j = 0; j < n; ) {
                                 pos.x = vertexData.items[j++] * scale;
                                 pos.y = vertexData.items[j++] * scale;
                                 pos.rotateRad(angleRad);
@@ -360,28 +354,15 @@ public class PrettyPolygonBatch {
 
                                 float _colorAsFloatBits = getColor(vertexData.items[j++], colorAsFloatBits, colorInvisibleAsFloatBits);
 
+                                if (j == 3 && i == begin) {
+                                        dataCount = setOutlineVertexData(pos.x, pos.y, colorInvisibleAsFloatBits, dataCount, weight);
+                                }
                                 dataCount = setOutlineVertexData(pos.x, pos.y, _colorAsFloatBits, dataCount, weight);
-
                         }
                 }
 
-                { // degenerate in order to travel from the previous vertex without drawing anything
-
-                        int k = (end - 1) % stripVertexes.size;
-
-                        OutlinePolygon.StripVertex stripVertex = stripVertexes.items[k];
-                        Array<Float> vertexData = inside ? stripVertex.insideVertexData : stripVertex.outsideVertexData;
-
-                        pos.x = vertexData.items[vertexData.size - 3] * scale;
-                        pos.y = vertexData.items[vertexData.size - 2] * scale;
-                        pos.rotateRad(angleRad);
-                        pos.x += translation_x;
-                        pos.y += translation_y;
-
-
-                        dataCount = setOutlineVertexData(pos.x, pos.y, colorInvisibleAsFloatBits, dataCount, weight);
-                }
-
+                // degenerate in order to travel from the previous vertex without drawing anything
+                dataCount = setOutlineVertexData(pos.x, pos.y, colorInvisibleAsFloatBits, dataCount, weight);
         }
 
         /** Append the information about this vertex to the data array. */
@@ -414,6 +395,7 @@ public class PrettyPolygonBatch {
                 mesh.setVertices(data, 0, dataCount);
 
                 Gdx.gl.glEnable(GL20.GL_BLEND);
+
                 if (lastTexture != null) lastTexture.bind();
                 mesh.render(shaderProgram, GL20.GL_TRIANGLE_STRIP, 0, dataCount / dataPerVertex);
 

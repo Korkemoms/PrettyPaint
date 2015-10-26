@@ -26,6 +26,7 @@ package org.prettypaint;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Intersector;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
@@ -135,6 +136,22 @@ public class OutlinePolygon implements PrettyPolygon {
                 return timeOfLastDrawCall;
         }
 
+        // TODO Comment
+        public void updateVertex(int vertexIndex, Vector2 vertex) {
+                updateVertex(vertexIndex, vertex.x, vertex.y);
+        }
+
+        // TODO Comment
+        public void updateVertex(int vertexIndex, float newX, float newY) {
+                vertices.items[vertexIndex].set(newX, newY);
+
+                // schedule this vertex and its neighbours for a remake
+                needsUpdate.items[vertexIndex] = true;
+                needsUpdate.items[(vertexIndex + 1) % needsUpdate.size] = true;
+                needsUpdate.items[(vertexIndex - 1 + needsUpdate.size) % needsUpdate.size] = true;
+
+        }
+
         /**
          * Draw the edges defined by {@link #setVertices(Array)}.
          * If {@link OutlineMerger#mergeOutlines(Array, boolean)} has been used on this {@link OutlinePolygon} then
@@ -184,12 +201,12 @@ public class OutlinePolygon implements PrettyPolygon {
                                         // if we reached here we can draw
 
                                         if (drawInside) {
-                                                batch.drawOutline(vertexDataArray, true, box.begin, box.begin + box.count+1,
+                                                batch.drawOutline(vertexDataArray, closedPolygon, true, box.begin, box.begin + box.count + 1,
                                                         tmpColor, scale, angleRad, position.x, position.y, weight);
                                         }
 
                                         if (drawOutside) {
-                                                batch.drawOutline(vertexDataArray, false, box.begin, box.begin + box.count+1,
+                                                batch.drawOutline(vertexDataArray, closedPolygon, false, box.begin, box.begin + box.count + 1,
                                                         tmpColor, scale, angleRad, position.x, position.y, weight);
                                         }
                                 }
@@ -198,6 +215,7 @@ public class OutlinePolygon implements PrettyPolygon {
                 return this;
         }
 
+        // TODO Comment
         private void updateStripAndCulling() {
                 updateAllBoxIndices();
 
@@ -210,7 +228,13 @@ public class OutlinePolygon implements PrettyPolygon {
                                         clockwiseUpdated = true;
                                         updateAuxVertexFinderClockwise();
                                 }
-                                updateVertex(i);
+                                if (drawInside) {
+                                        updateVertex(i, true);
+                                }
+                                if (drawOutside) {
+                                        updateVertex(i, false);
+                                }
+
                                 needsUpdate.items[i] = false;
                         }
                 }
@@ -223,11 +247,13 @@ public class OutlinePolygon implements PrettyPolygon {
                 }
         }
 
+        // TODO Comment
         private void updateAuxVertexFinderClockwise() {
                 boolean clockwisePolygon = RenderUtil.clockwisePolygon(vertices);
                 auxVertexFinder.setClockwise(clockwisePolygon);
         }
 
+        // TODO Comment
         private void updateAllBoxIndices() {
                 while (boundingBoxes.size * verticesPerBox < vertices.size) {
                         boundingBoxes.add(new BoundingBox(boundingBoxes.size * verticesPerBox, verticesPerBox));
@@ -240,6 +266,7 @@ public class OutlinePolygon implements PrettyPolygon {
                 }
         }
 
+        // TODO Comment
         private void updateBoxCulling(BoundingBox box) {
                 Rectangle rectangle = box.rectangle;
 
@@ -255,12 +282,30 @@ public class OutlinePolygon implements PrettyPolygon {
                                 } else if (outside.size > 0) {
                                         rectangle.set(outside.items[0], outside.items[1], 0, 0);
                                 }
+                                {
+                                        int k = (box.begin - 1 + vertices.size) % vertices.size;
+                                        Array<Float> _inside = vertexDataArray.items[k].insideVertexData;
+                                        Array<Float> _outside = vertexDataArray.items[k].outsideVertexData;
+                                        for (int i = 0; i < _inside.size; i += 3) {
+                                                rectangle.merge(_inside.items[i], _inside.items[i + 1]);
+                                        }
 
-                                int k = (box.begin - 1 + vertices.size) % vertices.size;
-                                rectangle.merge(vertices.items[k]);
+                                        for (int i = 0; i < _outside.size; i += 3) {
+                                                rectangle.merge(_outside.items[i], _outside.items[i + 1]);
+                                        }
+                                }
+                                {
+                                        int k = (box.begin + box.count + vertices.size) % vertices.size;
+                                        Array<Float> _inside = vertexDataArray.items[k].insideVertexData;
+                                        Array<Float> _outside = vertexDataArray.items[k].outsideVertexData;
+                                        for (int i = 0; i < _inside.size; i += 3) {
+                                                rectangle.merge(_inside.items[i], _inside.items[i + 1]);
+                                        }
 
-                                k = (box.begin + box.count + 1 + vertices.size) % vertices.size;
-                                rectangle.merge(vertices.items[k]);
+                                        for (int i = 0; i < _outside.size; i += 3) {
+                                                rectangle.merge(_outside.items[i], _outside.items[i + 1]);
+                                        }
+                                }
 
                                 initialized = true;
                         }
@@ -273,11 +318,29 @@ public class OutlinePolygon implements PrettyPolygon {
                                 rectangle.merge(outside.items[i], outside.items[i + 1]);
                         }
                 }
-
-
         }
 
-        private void updateVertex(int index) {
+        // TODO Comment
+        private void updateVertex(int index, boolean inside) {
+                boolean ending = index == 0 || index >= vertices.size - 1;
+                ending &= !closedPolygon;
+
+
+                if (ending) {
+                        if (index == 0) {
+                                updateVertexBeginning(index, inside);
+                        } else {
+                                updateVertexEnding(index, inside);
+                        }
+
+                } else {
+                        updateVertexDefault(index, inside);
+                }
+        }
+
+        // TODO Comment
+        public void updateVertexDefault(int index, boolean inside) {
+
                 BoundingBox box = boundingBoxes.items[index / verticesPerBox];
                 box.needsCullingUpdate = true;
 
@@ -285,89 +348,136 @@ public class OutlinePolygon implements PrettyPolygon {
                 StripVertex stripVertex = vertexDataArray.items[k];
                 AuxVertexFinder auxVertexFinder = this.auxVertexFinder;
 
-                if (drawInside) {
-                        auxVertexFinder.setInsideStrip(true);
+                Array<Float> vertexData = inside ? stripVertex.insideVertexData : stripVertex.outsideVertexData;
+                vertexData.clear();
 
-                        Array<Float> vertexData = stripVertex.insideVertexData;
-                        Vector2 currentVertex = vertices.items[k];
-                        add(currentVertex, VERTEX_TYPE_USER, vertexData);
+                auxVertexFinder.setInsideStrip(inside);
 
-                        Vector2 currentAux = auxVertexFinder.getAux(vertices, k);
-                        add(currentAux, VERTEX_TYPE_AUX, vertexData);
+                Vector2 currentVertex = vertices.items[k];
+                Vector2 defaultAux = auxVertexFinder.getAux(vertices, k);
+
+                Vector2 previous = tmp.set(vertices.items[(k - 1 + vertices.size) % vertices.size]);
+                Vector2 copyOfDefaultAux = tmp1.set(defaultAux);
+
+                previous.sub(currentVertex);
+                copyOfDefaultAux.sub(currentVertex);
+                float angle = previous.angleRad() - copyOfDefaultAux.angleRad();
+
+                angle = ((angle + MathUtils.PI2) % MathUtils.PI) * 2f;
+
+                boolean angleLessThanPI;
+                if (inside) {
+                        angleLessThanPI = angle < MathUtils.PI;
+                } else {
+                        angleLessThanPI = angle > MathUtils.PI;
                 }
-                if (drawOutside) {
-                        auxVertexFinder.setInsideStrip(false);
 
-                        Array<Float> vertexData = stripVertex.outsideVertexData;
-                        Vector2 currentVertex = vertices.items[k];
+                if (angleLessThanPI) {
+
+                        previous = tmp.set(vertices.items[(k - 1 + vertices.size) % vertices.size]);
+                        Vector2 next = tmp1.set(vertices.items[(k + 1) % vertices.size]);
+
+                        float dst1 = currentVertex.dst(previous);
+                        float dst2 = currentVertex.dst(next);
+
+                        float maxDst = Math.max(dst1, dst2);
+
+                        float currentDst = currentVertex.dst(defaultAux);
+
+                        if (currentDst > maxDst) {
+                                tmp3.set(defaultAux).sub(currentVertex).nor().scl(maxDst);
+                                defaultAux.set(currentVertex).add(tmp3);
+                        }
+
                         add(currentVertex, VERTEX_TYPE_USER, vertexData);
+                        add(defaultAux, VERTEX_TYPE_AUX, vertexData);
+                } else {
 
-                        Vector2 currentAux = auxVertexFinder.getAux(vertices, k);
-                        add(currentAux, VERTEX_TYPE_AUX, vertexData);
+                        boolean needsRounding = Math.abs(MathUtils.PI - angleRad) > 0.5f;
+
+                        if (needsRounding) {
+                                Vector2 beginningAux = auxVertexFinder.getAuxEnding(vertices, k, 0);
+                                Vector2 endingAux = auxVertexFinder.getAuxBeginning(vertices, k, 0);
+                                Vector2 middleAux = tmp.set(defaultAux).sub(currentVertex).nor().scl(halfWidth).add(currentVertex);
+
+                                add(currentVertex, VERTEX_TYPE_USER, vertexData);
+                                add(beginningAux, VERTEX_TYPE_AUX, vertexData);
+
+                                add(currentVertex, VERTEX_TYPE_USER, vertexData);
+                                add(middleAux, VERTEX_TYPE_AUX, vertexData);
+
+                                add(currentVertex, VERTEX_TYPE_USER, vertexData);
+                                add(endingAux, VERTEX_TYPE_AUX, vertexData);
+                        } else {
+                                add(currentVertex, VERTEX_TYPE_USER, vertexData);
+                                add(defaultAux, VERTEX_TYPE_AUX, vertexData);
+                        }
+
                 }
-
-
         }
 
-        /** Builds either the insideStrip or outside triangle strip. Depending on which AuxVertexFinder is given. */
-        private void buildStrip(AuxVertexFinder auxVertexFinder) {
-
-                /*if (!closedPolygon) {
-                        // if polygon is not closed the endings must be fixed
-                        {
-                                // round the ending
-                                BoundingBox br = boundingBoxes.peek();
-                                Array<Float> vertexDataArray = inside ? br.insideVertexData : br.outsideVertexData;
-
-                                if (vertexDataArray.size >= 6) {
-                                        vertexDataArray.removeRange(vertexDataArray.size - 6, vertexDataArray.size - 1);
-                                }
-
-                                int i = vertices.size - 1;
-                                Vector2 currentVertex = vertices.items[i];
-
-                                Vector2 currentAux = auxVertexFinder.getEndingAux(vertices, tmp, 0);
-                                add(currentVertex, VERTEX_TYPE_USER, vertexDataArray, br);
-                                add(currentAux, VERTEX_TYPE_AUX, vertexDataArray, br);
-
-                                currentAux = auxVertexFinder.getEndingAux(vertices, tmp, MathUtils.PI * 0.25f);
-                                add(currentVertex, VERTEX_TYPE_USER, vertexDataArray, br);
-                                add(currentAux, VERTEX_TYPE_AUX, vertexDataArray, br);
-
-                                currentAux = auxVertexFinder.getEndingAux(vertices, tmp, MathUtils.PI * 0.5f);
-                                add(currentVertex, VERTEX_TYPE_USER, vertexDataArray, br);
-                                add(currentAux, VERTEX_TYPE_AUX, vertexDataArray, br);
-
-                        }
-
-                        {
-                                // round the beginning
-                                BoundingBox br = boundingBoxes.first();
-                                Array<Float> vertexDataArray = inside ? br.insideVertexData : br.outsideVertexData;
-
-                                if (vertexDataArray.size >= 6) {
-                                        vertexDataArray.removeRange(0, 5);
-                                }
-
-                                int i = 0;
-                                Vector2 currentVertex = vertices.items[i];
-
-                                Vector2 currentAux = auxVertexFinder.getBeginningAux(vertices, tmp, 0);
-                                insert(currentAux, VERTEX_TYPE_AUX, vertexDataArray, br);
-                                insert(currentVertex, VERTEX_TYPE_USER, vertexDataArray, br);
-
-                                currentAux = auxVertexFinder.getBeginningAux(vertices, tmp, MathUtils.PI * 0.25f);
-                                insert(currentAux, VERTEX_TYPE_AUX, vertexDataArray, br);
-                                insert(currentVertex, VERTEX_TYPE_USER, vertexDataArray, br);
-
-                                currentAux = auxVertexFinder.getBeginningAux(vertices, tmp, MathUtils.PI * 0.5f);
-                                insert(currentAux, VERTEX_TYPE_AUX, vertexDataArray, br);
-                                insert(currentVertex, VERTEX_TYPE_USER, vertexDataArray, br);
-
-                        }
-                }*/
+        // TODO Comment
+        public void updateVertexEnding(int index, boolean inside) {
+                // if polygon is not closed the endings must be fixed
 
 
+                BoundingBox box = boundingBoxes.items[index / verticesPerBox];
+                box.needsCullingUpdate = true;
+
+                int k = index % vertices.size;
+                StripVertex stripVertex = vertexDataArray.items[k];
+                AuxVertexFinder auxVertexFinder = this.auxVertexFinder;
+
+                Array<Float> vertexData = inside ? stripVertex.insideVertexData : stripVertex.outsideVertexData;
+                vertexData.clear();
+
+                auxVertexFinder.setInsideStrip(inside);
+
+                Vector2 currentVertex = vertices.items[index];
+
+                Vector2 currentAux = auxVertexFinder.getAuxEnding(vertices, index, 0);
+                add(currentVertex, VERTEX_TYPE_USER, vertexData);
+                add(currentAux, VERTEX_TYPE_AUX, vertexData);
+
+                currentAux = auxVertexFinder.getAuxEnding(vertices, index, MathUtils.PI * 0.25f);
+                add(currentVertex, VERTEX_TYPE_USER, vertexData);
+                add(currentAux, VERTEX_TYPE_AUX, vertexData);
+
+                currentAux = auxVertexFinder.getAuxEnding(vertices, index, MathUtils.PI * 0.5f);
+                add(currentVertex, VERTEX_TYPE_USER, vertexData);
+                add(currentAux, VERTEX_TYPE_AUX, vertexData);
+        }
+
+        // TODO Comment
+        public void updateVertexBeginning(int index, boolean inside) {
+                // if polygon is not closed the endings must be fixed
+
+
+                BoundingBox box = boundingBoxes.items[index / verticesPerBox];
+                box.needsCullingUpdate = true;
+
+                int k = index % vertices.size;
+                StripVertex stripVertex = vertexDataArray.items[k];
+                AuxVertexFinder auxVertexFinder = this.auxVertexFinder;
+
+                Array<Float> vertexData = inside ? stripVertex.insideVertexData : stripVertex.outsideVertexData;
+                vertexData.clear();
+
+                auxVertexFinder.setInsideStrip(inside);
+
+                Vector2 currentVertex = vertices.items[index];
+
+                Vector2 currentAux = auxVertexFinder.getAuxBeginning(vertices, index, MathUtils.PI * 0.5f);
+                add(currentVertex, VERTEX_TYPE_USER, vertexData);
+                add(currentAux, VERTEX_TYPE_AUX, vertexData);
+
+                currentAux = auxVertexFinder.getAuxBeginning(vertices, index, MathUtils.PI * 0.25f);
+                add(currentVertex, VERTEX_TYPE_USER, vertexData);
+                add(currentAux, VERTEX_TYPE_AUX, vertexData);
+
+                currentAux = auxVertexFinder.getAuxBeginning(vertices, index, 0);
+                add(currentVertex, VERTEX_TYPE_USER, vertexData);
+                add(currentAux, VERTEX_TYPE_AUX, vertexData);
         }
 
         /**
@@ -405,56 +515,36 @@ public class OutlinePolygon implements PrettyPolygon {
 
                 }
 
-                private Vector2 getAuxBasic(Array<Vector2> vertices, int i) {
-                        int dir = clockWisePolygon ? 1 : -1;
-
-                        if (insideStrip) dir *= -1;
-                        RenderUtil.getEdge(vertices, (i + vertices.size - 1) % vertices.size, m1, m2);
-                        nor1.set(m2).sub(m1).nor().scl(halfWidth).rotate90(dir);
-                        m1.add(nor1);
-                        m2.add(nor1);
-
-                        RenderUtil.getEdge(vertices, (i + vertices.size) % vertices.size, n1, n2);
-                        nor2.set(n2).sub(n1).nor().scl(halfWidth).rotate90(dir);
-                        n1.add(nor2);
-                        n2.add(nor2);
-
-                        Vector2 result = new Vector2();
-                        Intersector.intersectLines(m1, m2, n1, n2, result);
-
-                        return result;
-
-                }
-
-
                 /**
                  * Finds the auxiliary vertices that are used to fill all the edges that are made. There is typically
                  * one of these for each vertex set by the user.
                  */
                 private Vector2 getAux(Array<Vector2> vertices, int i) {
-                        return getAuxBasic(vertices, i);
+                        int dir = clockWisePolygon ? 1 : -1;
+
+                        if (insideStrip) dir *= -1;
+                        RenderUtil.getEdge(vertices, (i + vertices.size - 1) % vertices.size, m1, m2);
+
+                        nor1.set(m2).sub(m1).nor().scl(halfWidth).rotate90(dir);
+                        m1.add(nor1);
+                        m2.add(nor1);
+
+                        RenderUtil.getEdge(vertices, (i + vertices.size) % vertices.size, n1, n2);
+
+                        nor2.set(n2).sub(n1).nor().scl(halfWidth).rotate90(dir);
+                        n1.add(nor2);
+                        n2.add(nor2);
+
+
+                        Vector2 result = new Vector2();
+                        Intersector.intersectLines(m1, m2, n1, n2, result);
+                        return result;
 
                 }
 
                 /** When the polygon is not closed we need auxiliary vertices to round the ending. */
-                private Vector2 getEndingAux(Array<Vector2> vertices, Vector2 result, float extraAngleRad) {
-                        RenderUtil.getEdge(vertices, vertices.size - 2, m1, m2);
-                        nor1.set(m2).sub(m1).nor().scl(halfWidth);
-
-                        int dir = clockWisePolygon ? 1 : -1;
-
-                        if (insideStrip) dir *= -1;
-
-                        nor1.rotate90(dir);
-                        nor1.rotateRad(extraAngleRad * (-dir));
-                        result.set(m2).add(nor1);
-
-                        return result;
-                }
-
-                /** When the polygon is not closed we need auxiliary vertices to round the beginning. */
-                private Vector2 getBeginningAux(Array<Vector2> vertices, Vector2 result, float extraAngleRad) {
-                        RenderUtil.getEdge(vertices, 0, m1, m2);
+                private Vector2 getAuxBeginning(Array<Vector2> vertices, int i, float extraAngleRad) {
+                        RenderUtil.getEdge(vertices, i, m1, m2);
                         nor1.set(m1).sub(m2).nor().scl(halfWidth);
 
                         int dir = clockWisePolygon ? -1 : 1;
@@ -463,9 +553,24 @@ public class OutlinePolygon implements PrettyPolygon {
 
                         nor1.rotate90(dir);
                         nor1.rotateRad(extraAngleRad * (-dir));
-                        result.set(m1).add(nor1);
 
-                        return result;
+
+                        return new Vector2(m1).add(nor1);
+                }
+
+                /** When the polygon is not closed we need auxiliary vertices to round the beginning. */
+                private Vector2 getAuxEnding(Array<Vector2> vertices, int i, float extraAngleRad) {
+                        RenderUtil.getEdge(vertices, (i - 1 + vertices.size) % vertices.size, m1, m2);
+                        nor1.set(m2).sub(m1).nor().scl(halfWidth);
+
+                        int dir = clockWisePolygon ? 1 : -1;
+
+                        if (insideStrip) dir *= -1;
+
+                        nor1.rotate90(dir);
+                        nor1.rotateRad(extraAngleRad * (-dir));
+
+                        return new Vector2(m2).add(nor1);
                 }
         }
 
@@ -532,6 +637,7 @@ public class OutlinePolygon implements PrettyPolygon {
         }
 
 
+        @Override
         public Array<Vector2> getVerticesRotatedAndTranslated() {
 
                 for (int i = 0; i < vertices.size; i++) {
@@ -543,11 +649,12 @@ public class OutlinePolygon implements PrettyPolygon {
                 return verticesRotatedAndTranslated;
         }
 
-
+        @Override
         public Array<Vector2> getVertices() {
                 return vertices;
         }
 
+        @Override
         public final OutlinePolygon setVertices(Array<Vector2> vertices) {
 
                 needsVertexUpdateBeforeRendering = true;
@@ -585,27 +692,29 @@ public class OutlinePolygon implements PrettyPolygon {
                 vertexData.add(alpha);
         }
 
-
+        @Override
         public float getAngleRad() {
                 return angleRad;
         }
 
-
+        @Override
         public OutlinePolygon setAngleRad(float angleRad) {
                 this.angleRad = angleRad;
                 return this;
         }
 
-
+        @Override
         public Vector2 getPosition() {
                 return position;
         }
 
+        @Override
         public OutlinePolygon setPosition(float x, float y) {
                 this.position.set(x, y);
                 return this;
         }
 
+        @Override
         public OutlinePolygon setPosition(Vector2 position) {
                 this.position.set(position);
                 return this;
@@ -652,11 +761,13 @@ public class OutlinePolygon implements PrettyPolygon {
         }
 
 
+        @Override
         public float getScale() {
                 return scale;
         }
 
 
+        @Override
         public OutlinePolygon setScale(float scale) {
                 this.scale = scale;
                 return this;
@@ -700,8 +811,18 @@ public class OutlinePolygon implements PrettyPolygon {
          * @return this for chaining.
          */
         public OutlinePolygon setClosedPolygon(boolean closedPolygon) {
+                boolean change = this.closedPolygon != closedPolygon;
+
                 needsVertexUpdateBeforeRendering = true;
                 this.closedPolygon = closedPolygon;
+
+                if (change) {
+                        if (needsUpdate.size > 0) {
+                                needsUpdate.items[needsUpdate.size - 1] = true;
+                                needsUpdate.items[0] = true;
+                        }
+
+                }
                 return this;
         }
 
@@ -816,49 +937,55 @@ public class OutlinePolygon implements PrettyPolygon {
                 }
 
 
-                /*if (drawTriangleStripsForDebugDraw) {
-                        shapeRenderer.setColor(Color.ORANGE);
+                if (drawTriangleStripsForDebugDraw) {
 
-                        for (BoundingBox bb : boundingBoxes) {
+
+                        for (int i = 0; i < vertexDataArray.size; i++) {
+                                StripVertex bb = vertexDataArray.items[i];
 
                                 Array<Float> data = bb.insideVertexData;
-                                for (int i = 0; i < data.size - 6; ) {
+                                for (int j = 0; j < data.size - 3; ) {
 
-                                        tmp.x = data.items[i];
-                                        tmp.y = data.items[i + 1];
+                                        shapeRenderer.setColor(j == 0 ? Color.ORANGE : Color.RED);
+
+                                        tmp.x = data.items[j];
+                                        tmp.y = data.items[j + 1];
                                         tmp.rotateRad(angleRad);
                                         tmp.scl(scale);
                                         tmp.add(position);
 
-                                        tmp1.x = data.items[i + 3];
-                                        tmp1.y = data.items[i + 4];
+                                        tmp1.x = data.items[j + 3];
+                                        tmp1.y = data.items[j + 4];
                                         tmp1.rotateRad(angleRad);
                                         tmp1.scl(scale);
                                         tmp1.add(position);
-                                        i += 3;
+                                        j += 3;
 
                                         shapeRenderer.line(tmp, tmp1);
                                 }
                                 data = bb.outsideVertexData;
-                                for (int i = 0; i < data.size - 6; ) {
-                                        tmp.x = data.items[i];
-                                        tmp.y = data.items[i + 1];
+                                for (int j = 0; j < data.size - 3; ) {
+
+                                        shapeRenderer.setColor(j == 0 ? Color.ORANGE : Color.RED);
+
+                                        tmp.x = data.items[j];
+                                        tmp.y = data.items[j + 1];
                                         tmp.rotateRad(angleRad);
                                         tmp.scl(scale);
                                         tmp.add(position);
 
-                                        tmp1.x = data.items[i + 3];
-                                        tmp1.y = data.items[i + 4];
+                                        tmp1.x = data.items[j + 3];
+                                        tmp1.y = data.items[j + 4];
                                         tmp1.rotateRad(angleRad);
                                         tmp1.scl(scale);
                                         tmp1.add(position);
-                                        i += 3;
+                                        j += 3;
 
                                         shapeRenderer.line(tmp, tmp1);
                                 }
 
                         }
-                }*/
+                }
         }
 
 
@@ -894,9 +1021,9 @@ public class OutlinePolygon implements PrettyPolygon {
 
         public static class StripVertex {
 
-                Array<Float> insideVertexData = new Array<Float>(true, 20, Float.class);
+                Array<Float> insideVertexData = new Array<Float>(true, 9, Float.class);
 
-                Array<Float> outsideVertexData = new Array<Float>(true, 20, Float.class);
+                Array<Float> outsideVertexData = new Array<Float>(true, 9, Float.class);
 
 
         }
