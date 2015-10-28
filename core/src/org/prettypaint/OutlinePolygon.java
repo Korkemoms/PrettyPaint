@@ -73,6 +73,8 @@ public class OutlinePolygon implements PrettyPolygon {
         private float halfWidth = 0.02f;
         private float opacity = 1;
 
+        private boolean roundSharpCorners = true;
+
         private Array<BoundingBox> boundingBoxes = new Array<BoundingBox>(true, 4, BoundingBox.class);
 
         private PrettyPolygonBatch.DebugRenderer debugRenderer;
@@ -104,6 +106,8 @@ public class OutlinePolygon implements PrettyPolygon {
         private boolean drawBoundingBoxesForDebugDraw = true;
         private boolean drawTriangleStripsForDebugDraw = true;
         private boolean drawLineFromFirstToLastForDebugDraw = true;
+
+        private boolean changesToStripOrCulling = false;
 
         /** Draws anti aliased polygon edges. */
         public OutlinePolygon() {
@@ -147,6 +151,25 @@ public class OutlinePolygon implements PrettyPolygon {
                 needsUpdate.items[(vertexIndex + 1) % needsUpdate.size] = true;
                 needsUpdate.items[(vertexIndex - 1 + needsUpdate.size) % needsUpdate.size] = true;
 
+                changesToStripOrCulling = true;
+
+        }
+
+        public boolean isRoundSharpCorners() {
+                return roundSharpCorners;
+        }
+
+        public void setRoundSharpCorners(boolean roundSharpCorners) {
+                boolean change = this.roundSharpCorners != roundSharpCorners;
+
+                if (change) {
+                        for (int i = 0; i < needsUpdate.size; i++) {
+                                needsUpdate.items[i] = true;
+                        }
+                        changesToStripOrCulling = true;
+                }
+
+                this.roundSharpCorners = roundSharpCorners;
         }
 
         /**
@@ -213,7 +236,9 @@ public class OutlinePolygon implements PrettyPolygon {
         }
 
         // TODO Comment
-        private void updateStripAndCulling() {
+        public void updateStripAndCulling() {
+                if (!changesToStripOrCulling) return;
+
                 updateAllBoxIndices();
 
                 boolean clockwiseUpdated = false;
@@ -336,7 +361,7 @@ public class OutlinePolygon implements PrettyPolygon {
         }
 
         // TODO Comment
-        public void updateVertexDefault(int index, boolean inside) {
+        private void updateVertexDefault(int index, boolean inside) {
 
                 BoundingBox box = boundingBoxes.items[index / verticesPerBox];
                 box.needsCullingUpdate = true;
@@ -389,10 +414,10 @@ public class OutlinePolygon implements PrettyPolygon {
                         add(currentVertex, VERTEX_TYPE_USER, vertexData);
                         add(defaultAux, VERTEX_TYPE_AUX, vertexData);
                 } else {
+                        boolean sharpCorner = Math.abs(MathUtils.PI - angleRad) > Math.PI * 0.4f;
+                        boolean roundCorner = roundSharpCorners && sharpCorner;
 
-                        boolean needsRounding = Math.abs(MathUtils.PI - angleRad) > 0.5f;
-
-                        if (needsRounding) {
+                        if (roundCorner) {
                                 Vector2 beginningAux = auxVertexFinder.getAuxEnding(vertices, k, 0);
                                 Vector2 endingAux = auxVertexFinder.getAuxBeginning(vertices, k, 0);
                                 Vector2 middleAux = tmp.set(defaultAux).sub(currentVertex).nor().scl(halfWidth).add(currentVertex);
@@ -413,8 +438,9 @@ public class OutlinePolygon implements PrettyPolygon {
                 }
         }
 
+
         // TODO Comment
-        public void updateVertexEnding(int index, boolean inside) {
+        private void updateVertexEnding(int index, boolean inside) {
                 // if polygon is not closed the endings must be fixed
 
 
@@ -446,7 +472,7 @@ public class OutlinePolygon implements PrettyPolygon {
         }
 
         // TODO Comment
-        public void updateVertexBeginning(int index, boolean inside) {
+        private void updateVertexBeginning(int index, boolean inside) {
                 // if polygon is not closed the endings must be fixed
 
 
@@ -583,6 +609,12 @@ public class OutlinePolygon implements PrettyPolygon {
         public OutlinePolygon setHalfWidth(float halfWidth) {
                 this.halfWidth = halfWidth;
                 auxVertexFinder.setHalfWidth(this.halfWidth);
+
+                for (int i = 0; i < needsUpdate.size; i++) {
+                        needsUpdate.items[i] = true;
+                }
+                changesToStripOrCulling = true;
+
                 return this;
         }
 
@@ -673,6 +705,8 @@ public class OutlinePolygon implements PrettyPolygon {
                 for (Vector2 v : vertices) {
                         this.verticesRotatedAndTranslated.add(new Vector2(v));
                 }
+
+                changesToStripOrCulling = true;
 
                 return this;
         }
@@ -815,6 +849,9 @@ public class OutlinePolygon implements PrettyPolygon {
                         }
 
                 }
+
+                changesToStripOrCulling = true;
+
                 return this;
         }
 
@@ -1005,12 +1042,11 @@ public class OutlinePolygon implements PrettyPolygon {
                         this.count = count;
                 }
 
-                void recomputeRectangle(Array<StripVertex> vertices) {
-
-                }
-
         }
 
+        /**
+         * This is a public class because GWT doesn't want to compile otherwise.
+         */
         public static class StripVertex {
 
                 Array<Float> insideVertexData = new Array<Float>(true, 9, Float.class);
