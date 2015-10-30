@@ -230,7 +230,6 @@ public class Background {
                 boolean change = this.textureRegion == null || !this.textureRegion.equals(textureRegion);
 
                 if (change) {
-                        System.out.println(textureRegion);
                         this.textureRegion = textureRegion;
                         regionBounds = new Rectangle(textureRegion.getRegionX(),
                                 textureRegion.getRegionY(),

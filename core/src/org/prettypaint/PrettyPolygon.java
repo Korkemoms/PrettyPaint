@@ -52,11 +52,10 @@ public interface PrettyPolygon {
         /**
          * When true draws debug information.
          *
-         * @param batch     The batch you are using to draw.
          * @param debugDraw Whether to draw debug information.
          * @return this for chaining.
          */
-        PrettyPolygon setDrawDebugInfo(PrettyPolygonBatch batch, boolean debugDraw);
+        PrettyPolygon setDrawDebugInfo(boolean debugDraw);
 
         /**
          * When true draws debug information.
@@ -118,9 +117,31 @@ public interface PrettyPolygon {
          */
         long getTimeOfLastDrawCall();
 
-        // TODO Comment
+        /**
+         *
+         * @param opacity the opacity for this polygon.
+         * @return this for chaining.
+         */
         PrettyPolygon setOpacity(float opacity);
 
-        // TODO Comment
+        /**
+         *
+         * @return the opacity of this polygon.
+         */
         float getOpacity();
+
+        /**
+         * An invisible polygon uses almost no cpu or gpu.
+         *
+         * @param visible whether this polygon should be visible.
+         * @return this for chaining.
+         */
+        PrettyPolygon setVisible(boolean visible);
+
+        /**
+         * An invisible polygon uses almost no cpu or gpu.
+         *
+         * @return whether this polygon is visible.
+         */
+        boolean isVisible();
 }

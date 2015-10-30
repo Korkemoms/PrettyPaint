@@ -14,6 +14,8 @@ public class OutlineMerger {
 
         private PrettyPolygonBatch.DebugRenderer debugRenderer;
 
+        private boolean verbose = false;
+
         // TODO Comment
         public OutlineMerger() {
                 debugRenderer = new PrettyPolygonBatch.DebugRenderer(null) {
@@ -24,6 +26,13 @@ public class OutlineMerger {
                 };
         }
 
+        public void setVerbose(boolean verbose) {
+                this.verbose = verbose;
+        }
+
+        public boolean isVerbose() {
+                return verbose;
+        }
 
         // TODO Comment
         public OutlineMerger setDrawDebugInfo(PrettyPolygonBatch batch, boolean debugDraw) {
@@ -82,7 +91,7 @@ public class OutlineMerger {
         }
 
         // TODO Comment
-        public void mergeOutlines(Array<OutlinePolygon> toMerge, boolean verbose) {
+        public void mergeOutlines(Array<OutlinePolygon> toMerge) {
                 if (toMerge.size == 0) return;
                 long begin = System.currentTimeMillis();
                 if (verbose) System.out.println("Auto outlining " + toMerge.size + " things");
@@ -98,7 +107,7 @@ public class OutlineMerger {
 
                         Path path = RenderUtil.convertToPath(or.getVerticesRotatedAndTranslated());
 
-                        alignReallyCloseVertices(previousPoints, path, 20d, verbose);
+                        alignReallyCloseVertices(previousPoints, path, 20d);
 
                         defaultClipper.addPath(path, i == 0 ? Clipper.PolyType.CLIP : Clipper.PolyType.SUBJECT, true);
                 }
@@ -158,7 +167,7 @@ public class OutlineMerger {
                 }
         }
 
-        private void alignReallyCloseVertices(Array<Point.LongPoint> vertices, Path path, double radius, boolean verbose) {
+        private void alignReallyCloseVertices(Array<Point.LongPoint> vertices, Path path, double radius) {
                 for (Point.LongPoint testPoint : path) {
                         long testX = testPoint.getX();
                         long testY = testPoint.getY();

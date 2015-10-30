@@ -58,6 +58,8 @@ public class TexturePolygon implements PrettyPolygon {
         private float scale = 1f;
         private float textureScale = 0.01f;
         private float opacity = 1f;
+        private boolean visible = true;
+
         private TextureRegion textureRegion;
         /** Vertices defining the polygon being drawn. */
         private final Array<Vector2> vertices = new Array<Vector2>(true, 4, Vector2.class);
@@ -74,6 +76,7 @@ public class TexturePolygon implements PrettyPolygon {
         private float textureAngleRad = 0;
         /** The last time */
         public long timeOfLastRender;
+        private boolean drawDebugInfo = false;
 
         /** Used by a {@link PrettyPolygonBatch} to determine if it should stop debug rendering this polygon. */
         private long timeOfLastDrawCall;
@@ -178,7 +181,7 @@ public class TexturePolygon implements PrettyPolygon {
                 float scale = this.textureScale * this.scale;
 
                 for (PolygonRegion pr : polygonRegions) {
-                        Rectangle cullingArea = tmpRectangle;
+                        Rectangle cullingArea = this.tmpRectangle;
                         getCullingArea(cullingArea, pr, angleRad + textureAngleRad, position, scale);
                         shapeRenderer.rect(cullingArea.x, cullingArea.y, cullingArea.width, cullingArea.height);
                 }
@@ -195,6 +198,10 @@ public class TexturePolygon implements PrettyPolygon {
                 if (batch == null) throw new RuntimeException("You must supply a batch.");
                 if (textureRegion == null) throw new RuntimeException("You must set a TextureRegion first.");
                 if (vertices == null) throw new RuntimeException("You must set the vertices first.");
+
+                if (!visible) return this;
+                if (opacity <= 0) return this;
+
 
                 Texture texture = textureRegion.getTexture();
 
@@ -214,9 +221,12 @@ public class TexturePolygon implements PrettyPolygon {
                 float scale = this.textureScale * this.scale;
 
                 long now = System.currentTimeMillis();
+
+                queueDebugDrawIfEnabled(batch);
+
                 for (int i = 0; i < polygonRegions.size; i++) {
                         PolygonRegion pr = polygonRegions.items[i];
-                        Rectangle cullingArea = tmpRectangle;
+                        Rectangle cullingArea = this.tmpRectangle;
                         getCullingArea(cullingArea, pr, angleRad + textureAngleRad, position, scale);
 
 
@@ -330,22 +340,21 @@ public class TexturePolygon implements PrettyPolygon {
                 return this;
         }
 
+        private void queueDebugDrawIfEnabled(PrettyPolygonBatch batch) {
+                if (drawDebugInfo)
+                        if (!batch.debugRendererArray.contains(debugRenderer, true))
+                                batch.debugRendererArray.add(debugRenderer);
+        }
+
         /**
          * When true draws the culling rectangles of the triangles.
          *
-         * @param batch     The batch you are using to draw.
          * @param debugDraw Whether to draw debug information.
          * @return this for chaining.
          */
         @Override
-        public TexturePolygon setDrawDebugInfo(PrettyPolygonBatch batch, boolean debugDraw) {
-                if (debugDraw) {
-                        if (!batch.debugRendererArray.contains(debugRenderer, true))
-                                batch.debugRendererArray.add(debugRenderer);
-                } else {
-                        batch.debugRendererArray.removeValue(debugRenderer, true);
-                }
-
+        public TexturePolygon setDrawDebugInfo(boolean debugDraw) {
+                this.drawDebugInfo = debugDraw;
                 return this;
         }
 
@@ -357,7 +366,7 @@ public class TexturePolygon implements PrettyPolygon {
          */
         @Override
         public boolean isDrawingDebugInfo(PrettyPolygonBatch batch) {
-                return batch.debugRendererArray.contains(debugRenderer, true);
+                return drawDebugInfo;
         }
 
         /**
@@ -406,7 +415,6 @@ public class TexturePolygon implements PrettyPolygon {
 
                 actualTextureTranslation.x %= RenderUtil.getMaximumTranslationX(textureRegion);
                 actualTextureTranslation.y %= RenderUtil.getMaximumTranslationY(textureRegion);
-
 
                 return this;
         }
@@ -645,4 +653,14 @@ public class TexturePolygon implements PrettyPolygon {
                 return verticesRotatedAndTranslated;
         }
 
+        @Override
+        public TexturePolygon setVisible(boolean visible) {
+                this.visible = visible;
+                return this;
+        }
+
+        @Override
+        public boolean isVisible() {
+                return visible;
+        }
 }

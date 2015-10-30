@@ -48,14 +48,23 @@ public class OutlinePolygon implements PrettyPolygon {
          */
         protected static final int VERTEX_TYPE_AUX = 0;
 
-
+        /** The actual vertices of the polygon. */
         private final Array<Vector2> vertices = new Array<Vector2>(true, 1, Vector2.class);
+
+        /** This array is only updated when {@link #getVerticesRotatedAndTranslated()} is called. */
         private final Array<Vector2> verticesRotatedAndTranslated = new Array<Vector2>(true, 4, Vector2.class);
+
+        /**
+         * When a value in this array is true the StripVertex with corresponding index must be updated before drawing.
+         * There are several methods that cause values in this array to become true.
+         */
         private final Array<Boolean> needsUpdate = new Array<Boolean>(true, 4, Boolean.class);
+
+        /** The actual triangle strip is contained in this array. */
         private final Array<StripVertex> vertexDataArray = new Array<StripVertex>(true, 4, StripVertex.class);
 
-
         private final AuxVertexFinder auxVertexFinder = new AuxVertexFinder();
+
         private final Vector2 tmp = new Vector2(), tmp1 = new Vector2(), tmp2 = new Vector2(), tmp3 = new Vector2();
         private final Rectangle tmpRectangle = new Rectangle();
         private final Color tmpColor = new Color();
@@ -90,6 +99,8 @@ public class OutlinePolygon implements PrettyPolygon {
         /** I am unsure which value is optimal. */
         private int verticesPerBox = 10;
 
+        private boolean visible = true;
+
         /**
          * Used by a parent to determine when it should draw. A parent draws
          * after all its children has had their draw method called. A child
@@ -108,6 +119,8 @@ public class OutlinePolygon implements PrettyPolygon {
         private boolean drawLineFromFirstToLastForDebugDraw = true;
 
         private boolean changesToStripOrCulling = false;
+
+        private boolean drawDebugInfo = false;
 
         /** Draws anti aliased polygon edges. */
         public OutlinePolygon() {
@@ -137,12 +150,23 @@ public class OutlinePolygon implements PrettyPolygon {
                 return timeOfLastDrawCall;
         }
 
-        // TODO Comment
+        /**
+         * You can call this method to update a vertex individually, instead of updating all the vertices with {@link #setVertices(Array).
+         *
+         * @param vertexIndex the index of the vertex you wish to change
+         * @param vertex      the new vertex coordinates
+         */
         public void updateVertex(int vertexIndex, Vector2 vertex) {
                 updateVertex(vertexIndex, vertex.x, vertex.y);
         }
 
-        // TODO Comment
+        /**
+         * You can call this method to update a vertex individually, instead of updating all the vertices with {@link #setVertices(Array).
+         *
+         * @param vertexIndex the index of the vertex you wish to change
+         * @param newX        the new x coordinate
+         * @param newY        the new y coordinate
+         */
         public void updateVertex(int vertexIndex, float newX, float newY) {
                 vertices.items[vertexIndex].set(newX, newY);
 
@@ -155,10 +179,20 @@ public class OutlinePolygon implements PrettyPolygon {
 
         }
 
-        public boolean isRoundSharpCorners() {
+        /**
+         * Rounding of sharp corners can make the outlines look better.
+         *
+         * @return whether sharp corners are being rounded.
+         */
+        public boolean isRoundingSharpCorners() {
                 return roundSharpCorners;
         }
 
+        /**
+         * Rounding of sharp corners can make the outlines look better.
+         *
+         * @param roundSharpCorners whether to round sharp corners.
+         */
         public void setRoundSharpCorners(boolean roundSharpCorners) {
                 boolean change = this.roundSharpCorners != roundSharpCorners;
 
@@ -193,12 +227,14 @@ public class OutlinePolygon implements PrettyPolygon {
                 drawInvocations++;
 
                 if (myChildren.size == 0 || drawInvocations >= myChildren.size) {
+
+                        queueDebugDrawIfEnabled(batch);
+
                         timeOfLastDrawCall = System.currentTimeMillis();
                         // if i don't have any children i will just attempt to draw right away
                         // also if all my children has had their draw method called i will attempt to draw
 
                         drawInvocations = 0;
-
 
                         if (halfWidth <= 0) return this;
                         if (color.a <= 0) return this;
@@ -218,7 +254,7 @@ public class OutlinePolygon implements PrettyPolygon {
                                 Rectangle cullingArea = getCullingArea(tmpRectangle, box.rectangle, angleRad, position, scale);
 
                                 if (frustum.overlaps(cullingArea)) {
-                                        // if we reached here we can draw
+                                        // if we reached here we can draw the vertices within this particular BoundingBox
 
                                         if (drawInside) {
                                                 batch.drawOutline(vertexDataArray, closedPolygon, true, box.begin, box.begin + box.count + 1,
@@ -235,7 +271,19 @@ public class OutlinePolygon implements PrettyPolygon {
                 return this;
         }
 
-        // TODO Comment
+        private void queueDebugDrawIfEnabled(PrettyPolygonBatch batch) {
+                if (drawDebugInfo)
+                        if (!batch.debugRendererArray.contains(debugRenderer, true))
+                                batch.debugRendererArray.add(debugRenderer);
+        }
+
+        /**
+         * When you call methods like for example {@link #setHalfWidth(float)} or {@link #updateVertex(int, float, float)}
+         * work is being queued up. Before each draw call this method is automatically called to do all this work.
+         * <p>
+         * It can be smart to call this method after you are done configuring your OutlinePolygon, but before you
+         * exit your loading screen. This way you do more work during the loading screen and get less initial lag.
+         */
         public void updateStripAndCulling() {
                 if (!changesToStripOrCulling) return;
 
@@ -269,13 +317,21 @@ public class OutlinePolygon implements PrettyPolygon {
                 }
         }
 
-        // TODO Comment
+
+        /**
+         * The aux vertex finder needs to know if the polygon is a clockwise one.
+         * Instead of figuring out whether the polygon is clockwise each time it needs to know
+         * this method is called at most once during {@link #updateStripAndCulling()}, and only if
+         * the vertices has been changed.
+         */
         private void updateAuxVertexFinderClockwise() {
                 boolean clockwisePolygon = RenderUtil.clockwisePolygon(vertices);
                 auxVertexFinder.setClockwise(clockwisePolygon);
         }
 
-        // TODO Comment
+        /**
+         *
+         */
         private void updateAllBoxIndices() {
                 while (boundingBoxes.size * verticesPerBox < vertices.size) {
                         boundingBoxes.add(new BoundingBox(boundingBoxes.size * verticesPerBox, verticesPerBox));
@@ -344,17 +400,10 @@ public class OutlinePolygon implements PrettyPolygon {
 
         // TODO Comment
         private void updateVertex(int index, boolean inside) {
-                boolean ending = index == 0 || index >= vertices.size - 1;
-                ending &= !closedPolygon;
-
-
-                if (ending) {
-                        if (index == 0) {
-                                updateVertexBeginning(index, inside);
-                        } else {
-                                updateVertexEnding(index, inside);
-                        }
-
+                if (!closedPolygon && index == 0) {
+                        updateVertexBeginning(inside);
+                } else if (!closedPolygon && index == vertices.size - 1) {
+                        updateVertexEnding(inside);
                 } else {
                         updateVertexDefault(index, inside);
                 }
@@ -378,77 +427,71 @@ public class OutlinePolygon implements PrettyPolygon {
                 Vector2 currentVertex = vertices.items[k];
                 Vector2 defaultAux = auxVertexFinder.getAux(vertices, k);
 
-                Vector2 previous = tmp.set(vertices.items[(k - 1 + vertices.size) % vertices.size]);
-                Vector2 copyOfDefaultAux = tmp1.set(defaultAux);
+                boolean roundCorner = false;
 
-                previous.sub(currentVertex);
-                copyOfDefaultAux.sub(currentVertex);
-                float angle = previous.angleRad() - copyOfDefaultAux.angleRad();
+                {       // within these brackets i figure out if i should round the corner.
+                        // i hope to rewrite this code to something i can understand one day after writing it
+                        Vector2 previous = tmp.set(vertices.items[(k - 1 + vertices.size) % vertices.size]);
+                        Vector2 copyOfDefaultAux = tmp1.set(defaultAux);
 
-                angle = ((angle + MathUtils.PI2) % MathUtils.PI) * 2f;
+                        previous.sub(currentVertex);
+                        copyOfDefaultAux.sub(currentVertex);
 
-                boolean angleLessThanPI;
-                if (inside) {
-                        angleLessThanPI = angle < MathUtils.PI;
-                } else {
-                        angleLessThanPI = angle > MathUtils.PI;
-                }
-
-                if (angleLessThanPI) {
-
-                        previous = tmp.set(vertices.items[(k - 1 + vertices.size) % vertices.size]);
-                        Vector2 next = tmp1.set(vertices.items[(k + 1) % vertices.size]);
-
-                        float dst1 = currentVertex.dst(previous);
-                        float dst2 = currentVertex.dst(next);
-
-                        /*float maxDst = Math.max(dst1, dst2);
-
-                        float currentDst = currentVertex.dst(defaultAux);
-
-                        if (currentDst > maxDst) {
-                                tmp3.set(defaultAux).sub(currentVertex).nor().scl(maxDst);
-                                defaultAux.set(currentVertex).add(tmp3);
-                        }*/
-
-                        add(currentVertex, VERTEX_TYPE_USER, vertexData);
-                        add(defaultAux, VERTEX_TYPE_AUX, vertexData);
-                } else {
-                        boolean sharpCorner = Math.abs(MathUtils.PI - angleRad) > Math.PI * 0.4f;
-                        boolean roundCorner = roundSharpCorners && sharpCorner;
-
-                        if (roundCorner) {
-                                Vector2 beginningAux = auxVertexFinder.getAuxEnding(vertices, k, 0);
-                                Vector2 endingAux = auxVertexFinder.getAuxBeginning(vertices, k, 0);
-                                Vector2 middleAux = tmp.set(defaultAux).sub(currentVertex).nor().scl(halfWidth).add(currentVertex);
-
-                                add(currentVertex, VERTEX_TYPE_USER, vertexData);
-                                add(beginningAux, VERTEX_TYPE_AUX, vertexData);
-
-                                add(currentVertex, VERTEX_TYPE_USER, vertexData);
-                                add(middleAux, VERTEX_TYPE_AUX, vertexData);
-
-                                add(currentVertex, VERTEX_TYPE_USER, vertexData);
-                                add(endingAux, VERTEX_TYPE_AUX, vertexData);
+                        float angle = previous.angleRad() - copyOfDefaultAux.angleRad();
+                        angle = ((angle + MathUtils.PI2) % MathUtils.PI) * 2f;
+                        boolean angleMoreThanPI;
+                        if (inside) {
+                                angleMoreThanPI = angle > MathUtils.PI * 1.1f;
                         } else {
-                                add(currentVertex, VERTEX_TYPE_USER, vertexData);
-                                add(defaultAux, VERTEX_TYPE_AUX, vertexData);
+                                angleMoreThanPI = angle < MathUtils.PI * 0.9f;
                         }
 
+                        if (auxVertexFinder.clockWisePolygon) angleMoreThanPI = !angleMoreThanPI;
+
+
+                        if (angleMoreThanPI) {
+                                boolean sharpCorner = Math.abs(MathUtils.PI - angle) > Math.PI * 0.4f;
+                                roundCorner = roundSharpCorners && sharpCorner;
+                        }
                 }
+
+                if (roundCorner) {
+                        Vector2 beginningAux = auxVertexFinder.getAuxEnding(vertices, k, 0);
+                        Vector2 endingAux = auxVertexFinder.getAuxBeginning(vertices, k, 0);
+                        Vector2 middleAux = tmp.set(defaultAux).sub(currentVertex).nor().scl(halfWidth).add(currentVertex);
+
+                        add(currentVertex, VERTEX_TYPE_USER, vertexData);
+                        add(beginningAux, VERTEX_TYPE_AUX, vertexData);
+
+                        add(currentVertex, VERTEX_TYPE_USER, vertexData);
+                        add(middleAux, VERTEX_TYPE_AUX, vertexData);
+
+                        add(currentVertex, VERTEX_TYPE_USER, vertexData);
+                        add(endingAux, VERTEX_TYPE_AUX, vertexData);
+                } else {
+                        add(currentVertex, VERTEX_TYPE_USER, vertexData);
+                        add(defaultAux, VERTEX_TYPE_AUX, vertexData);
+                }
+
+
         }
 
 
-        // TODO Comment
-        private void updateVertexEnding(int index, boolean inside) {
+        /**
+         * Updates a strip vertex with vertices shaping a rounded ending. This method
+         * is called when the polygon is open (not {@link #isClosedPolygon()}).
+         *
+         * @param inside whether this is a <b>inside</b> triangle strip,
+         *               as opposed to an outside triangle strip.
+         */
+        private void updateVertexEnding(boolean inside) {
                 // if polygon is not closed the endings must be fixed
-
+                int index = vertices.size - 1;
 
                 BoundingBox box = boundingBoxes.items[index / verticesPerBox];
                 box.needsCullingUpdate = true;
 
-                int k = index % vertices.size;
-                StripVertex stripVertex = vertexDataArray.items[k];
+                StripVertex stripVertex = vertexDataArray.items[index];
                 AuxVertexFinder auxVertexFinder = this.auxVertexFinder;
 
                 Array<Float> vertexData = inside ? stripVertex.insideVertexData : stripVertex.outsideVertexData;
@@ -471,16 +514,21 @@ public class OutlinePolygon implements PrettyPolygon {
                 add(currentAux, VERTEX_TYPE_AUX, vertexData);
         }
 
-        // TODO Comment
-        private void updateVertexBeginning(int index, boolean inside) {
+        /**
+         * Updates a strip vertex with vertices shaping a rounded beginning. This method
+         * is called when the polygon is open (not {@link #isClosedPolygon()}).
+         *
+         * @param inside whether this is a <b>inside</b> triangle strip,
+         *               as opposed to an outside triangle strip.
+         */
+        private void updateVertexBeginning(boolean inside) {
                 // if polygon is not closed the endings must be fixed
+                int index = 0;
 
-
-                BoundingBox box = boundingBoxes.items[index / verticesPerBox];
+                BoundingBox box = boundingBoxes.items[0];
                 box.needsCullingUpdate = true;
 
-                int k = index % vertices.size;
-                StripVertex stripVertex = vertexDataArray.items[k];
+                StripVertex stripVertex = vertexDataArray.items[index];
                 AuxVertexFinder auxVertexFinder = this.auxVertexFinder;
 
                 Array<Float> vertexData = inside ? stripVertex.insideVertexData : stripVertex.outsideVertexData;
@@ -856,20 +904,14 @@ public class OutlinePolygon implements PrettyPolygon {
         }
 
         /** For debugging. */
-        public OutlinePolygon setDrawDebugInfo(PrettyPolygonBatch batch, boolean debugDraw) {
-                if (debugDraw) {
-                        if (!batch.debugRendererArray.contains(debugRenderer, true))
-                                batch.debugRendererArray.add(debugRenderer);
-                } else {
-                        batch.debugRendererArray.removeValue(debugRenderer, true);
-                }
-
+        public OutlinePolygon setDrawDebugInfo(boolean debugDraw) {
+                this.drawDebugInfo = debugDraw;
                 return this;
         }
 
         /** For debugging. */
         public boolean isDrawingDebugInfo(PrettyPolygonBatch batch) {
-                return batch.debugRendererArray.contains(debugRenderer, true);
+                return drawDebugInfo;
         }
 
         /** For debugging. */
@@ -1034,7 +1076,13 @@ public class OutlinePolygon implements PrettyPolygon {
                 /** The number of vertices that this bounding rectangle include. */
                 int count;
 
-                boolean needsCullingUpdate = false;
+                /**
+                 * This box needs a culling update when:
+                 * - a new stripVertex is added to it
+                 * - a stripVertex is removed from it
+                 * - a stripVertex within it changes
+                 */
+                boolean needsCullingUpdate = true;
 
 
                 BoundingBox(int begin, int count) {
@@ -1045,6 +1093,12 @@ public class OutlinePolygon implements PrettyPolygon {
         }
 
         /**
+         * Each vertex supplied by the user must be supplemented by other
+         * vertices to make a pretty triangle strip. A strip vertex
+         * contains the user vertex and all the other vertices associated with it.
+         * It is ordered so that when passed to the gpu, together with the previous and next vertex, a
+         * pretty triangle strip is formed.
+         * <p>
          * This is a public class because GWT doesn't want to compile otherwise.
          */
         public static class StripVertex {
@@ -1054,5 +1108,16 @@ public class OutlinePolygon implements PrettyPolygon {
                 Array<Float> outsideVertexData = new Array<Float>(true, 9, Float.class);
 
 
+        }
+
+        @Override
+        public OutlinePolygon setVisible(boolean visible) {
+                this.visible = visible;
+                return this;
+        }
+
+        @Override
+        public boolean isVisible() {
+                return visible;
         }
 }
