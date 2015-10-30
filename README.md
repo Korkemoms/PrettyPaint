@@ -38,7 +38,7 @@ Here is a demo:
 Very sharp angles when combined with thick edges.
 
 # License
-PrettyPaint:  <a href="https://opensource.org/licenses/MIT">MIT license</a>
-poly2tri: <a href="http://opensource.org/licenses/BSD-3-Clause">New BSD License</a>
-Clipper: <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License</a>
+* PrettyPaint:  <a href="https://opensource.org/licenses/MIT">MIT license</a>
+* poly2tri: <a href="http://opensource.org/licenses/BSD-3-Clause">New BSD License</a>
+* Clipper: <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License</a>
 
