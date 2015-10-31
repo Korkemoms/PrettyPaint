@@ -56,7 +56,7 @@ public class OutlineMerger {
                 debug.clear();
         }
 
-        /** Draws all the previously found intersections. To clear old lines use {@link #clearDebugLines()}. */
+        // TODO Comment
         private void debugDraw(ShapeRenderer shapeRenderer) {
                 Vector2 tmp = new Vector2();
                 Vector2 tmp1 = new Vector2();
@@ -119,8 +119,7 @@ public class OutlineMerger {
                 Paths simplified = DefaultClipper.simplifyPolygons(unions1, Clipper.PolyFillType.NON_ZERO);
                 Paths simplifiedAndCleaned = simplified.cleanPolygons(20d);
 
-                if (verbose)
-                        System.out.println("Auto outlining resulted in " + simplifiedAndCleaned.size() + " patches.");
+                if (verbose) System.out.println("Auto outlining resulted in " + simplifiedAndCleaned.size() + " patches.");
 
                 for (Path path : simplifiedAndCleaned) {
 

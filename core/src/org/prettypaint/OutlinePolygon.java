@@ -151,7 +151,8 @@ public class OutlinePolygon implements PrettyPolygon {
         }
 
         /**
-         * You can call this method to update a vertex individually, instead of updating all the vertices with {@link #setVertices(Array).
+         * You can call this method to update a vertex individually, instead of updating
+         * all the vertices with {@link #setVertices(Array).
          *
          * @param vertexIndex the index of the vertex you wish to change
          * @param vertex      the new vertex coordinates
@@ -161,7 +162,8 @@ public class OutlinePolygon implements PrettyPolygon {
         }
 
         /**
-         * You can call this method to update a vertex individually, instead of updating all the vertices with {@link #setVertices(Array).
+         * You can call this method to update a vertex individually, instead of updating
+         * all the vertices with {@link #setVertices(Array).
          *
          * @param vertexIndex the index of the vertex you wish to change
          * @param newX        the new x coordinate
@@ -176,8 +178,26 @@ public class OutlinePolygon implements PrettyPolygon {
                 needsUpdate.items[(vertexIndex - 1 + needsUpdate.size) % needsUpdate.size] = true;
 
                 changesToStripOrCulling = true;
+        }
+
+        public void addVertex(Vector2 vertex) {
+                addVertex(vertex.x, vertex.y);
+        }
+
+        public void addVertex(float x, float y) {
+                vertices.add(new Vector2(x, y));
+
+
+                if (needsUpdate.size >= 1) needsUpdate.items[needsUpdate.size - 1] = true;
+                needsUpdate.add(true);
+
+                vertexDataArray.add(new StripVertex());
+                verticesRotatedAndTranslated.add(new Vector2());
+
+                changesToStripOrCulling = true;
 
         }
+
 
         /**
          * Rounding of sharp corners can make the outlines look better.
@@ -208,7 +228,7 @@ public class OutlinePolygon implements PrettyPolygon {
 
         /**
          * Draw the edges defined by {@link #setVertices(Array)}.
-         * If {@link OutlineMerger#mergeOutlines(Array, boolean)} has been used on this {@link OutlinePolygon} then
+         * If {@link OutlineMerger#mergeOutlines(Array)} has been used on this {@link OutlinePolygon} then
          * the draw method may just be redirected to this outlinePolygon's parents.
          *
          * @param batch Accumulates data and sends it in large portions to the gpu, instead of sending small portions more often.
@@ -355,46 +375,60 @@ public class OutlinePolygon implements PrettyPolygon {
                         Array<Float> outside = vertexDataArray.items[n].outsideVertexData;
 
                         if (!initialized) {
-                                if (inside.size > 0) {
+                                if (inside.size > 0 && drawInside) {
                                         rectangle.set(inside.items[0], inside.items[1], 0, 0);
-                                } else if (outside.size > 0) {
+                                } else if (outside.size > 0 && drawOutside) {
                                         rectangle.set(outside.items[0], outside.items[1], 0, 0);
                                 }
+
                                 {
                                         int k = (box.begin - 1 + vertices.size) % vertices.size;
-                                        Array<Float> _inside = vertexDataArray.items[k].insideVertexData;
-                                        Array<Float> _outside = vertexDataArray.items[k].outsideVertexData;
-                                        for (int i = 0; i < _inside.size; i += 3) {
-                                                rectangle.merge(_inside.items[i], _inside.items[i + 1]);
+
+                                        if (drawInside) {
+                                                Array<Float> _inside = vertexDataArray.items[k].insideVertexData;
+                                                for (int i = 0; i < _inside.size; i += 3) {
+                                                        rectangle.merge(_inside.items[i], _inside.items[i + 1]);
+                                                }
                                         }
 
-                                        for (int i = 0; i < _outside.size; i += 3) {
-                                                rectangle.merge(_outside.items[i], _outside.items[i + 1]);
+                                        if (drawOutside) {
+                                                Array<Float> _outside = vertexDataArray.items[k].outsideVertexData;
+                                                for (int i = 0; i < _outside.size; i += 3) {
+                                                        rectangle.merge(_outside.items[i], _outside.items[i + 1]);
+                                                }
                                         }
                                 }
+
                                 {
                                         int k = (box.begin + box.count + vertices.size) % vertices.size;
-                                        Array<Float> _inside = vertexDataArray.items[k].insideVertexData;
-                                        Array<Float> _outside = vertexDataArray.items[k].outsideVertexData;
-                                        for (int i = 0; i < _inside.size; i += 3) {
-                                                rectangle.merge(_inside.items[i], _inside.items[i + 1]);
+
+                                        if (drawInside) {
+                                                Array<Float> _inside = vertexDataArray.items[k].insideVertexData;
+                                                for (int i = 0; i < _inside.size; i += 3) {
+                                                        rectangle.merge(_inside.items[i], _inside.items[i + 1]);
+                                                }
                                         }
 
-                                        for (int i = 0; i < _outside.size; i += 3) {
-                                                rectangle.merge(_outside.items[i], _outside.items[i + 1]);
+                                        if (drawOutside) {
+                                                Array<Float> _outside = vertexDataArray.items[k].outsideVertexData;
+                                                for (int i = 0; i < _outside.size; i += 3) {
+                                                        rectangle.merge(_outside.items[i], _outside.items[i + 1]);
+                                                }
                                         }
                                 }
 
                                 initialized = true;
                         }
 
-                        for (int i = 0; i < inside.size; i += 3) {
-                                rectangle.merge(inside.items[i], inside.items[i + 1]);
-                        }
+                        if (drawInside)
+                                for (int i = 0; i < inside.size; i += 3) {
+                                        rectangle.merge(inside.items[i], inside.items[i + 1]);
+                                }
 
-                        for (int i = 0; i < outside.size; i += 3) {
-                                rectangle.merge(outside.items[i], outside.items[i + 1]);
-                        }
+                        if (drawOutside)
+                                for (int i = 0; i < outside.size; i += 3) {
+                                        rectangle.merge(outside.items[i], outside.items[i + 1]);
+                                }
                 }
         }
 
@@ -855,16 +889,20 @@ public class OutlinePolygon implements PrettyPolygon {
          */
         private Rectangle getCullingArea(Rectangle cullingArea, Rectangle boundingBox, float rotation, Vector2 translation, float scale) {
 
-                tmp.set(boundingBox.x, boundingBox.y).scl(scale).rotateRad(rotation).add(translation);
+                tmp.set(boundingBox.x, boundingBox.y)
+                        .scl(scale).rotateRad(rotation).add(translation);
                 cullingArea.set(tmp.x, tmp.y, 0, 0);
 
-                tmp.set(boundingBox.x + boundingBox.width, boundingBox.y).scl(scale).rotateRad(rotation).add(translation);
+                tmp.set(boundingBox.x + boundingBox.width, boundingBox.y)
+                        .scl(scale).rotateRad(rotation).add(translation);
                 cullingArea.merge(tmp);
 
-                tmp.set(boundingBox.x + boundingBox.width, boundingBox.y + boundingBox.height).scl(scale).rotateRad(rotation).add(translation);
+                tmp.set(boundingBox.x + boundingBox.width, boundingBox.y + boundingBox.height)
+                        .scl(scale).rotateRad(rotation).add(translation);
                 cullingArea.merge(tmp);
 
-                tmp.set(boundingBox.x, boundingBox.y + boundingBox.height).scl(scale).rotateRad(rotation).add(translation);
+                tmp.set(boundingBox.x, boundingBox.y + boundingBox.height)
+                        .scl(scale).rotateRad(rotation).add(translation);
                 cullingArea.merge(tmp);
 
                 return cullingArea;
