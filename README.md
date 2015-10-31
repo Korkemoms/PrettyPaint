@@ -28,10 +28,10 @@ I have modified these libraries a little bit to make them work with GWT.
 # How to
 For now you must copy the source code from git if you want to try it.
 
-Here are two demos:
+[Here](http://amsoftware.org/PrettyPaint/) are come compiled demos. The source code is [here](core/src/org/prettypaint/test/).
 
-[source](core/src/org/prettypaint/test/)
-[compiled](http://amsoftware.org/PrettyPaint/)
+
+
 
 # Stuff that is not so pretty
 Very sharp angles when combined with thick edges.
