@@ -39,7 +39,7 @@ import org.prettypaint.TexturePolygon;
 /**
  * This is a demo showing how to use PrettyPaint to draw a pretty polygon.
  */
-public class PrettyPaintDemo extends ApplicationAdapter implements InputProcessor {
+public class PrettyPaintJustATest extends ApplicationAdapter implements InputProcessor {
 
         // It is best to use a OrthographicCamera with PrettyPaint
         OrthographicCamera camera;
@@ -98,7 +98,7 @@ public class PrettyPaintDemo extends ApplicationAdapter implements InputProcesso
                 //shadowPolygon.setDrawLineFromFirstToLastForDebugDraw(true);
 
 
-                Texture texture = new Texture("badlogic.jpg");
+                Texture texture = new Texture("contemporary_china.png");
                 texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
 
                 texturePolygon = new TexturePolygon();

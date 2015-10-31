@@ -191,6 +191,8 @@ public class OutlinePolygon implements PrettyPolygon {
                 if (needsUpdate.size >= 1) needsUpdate.items[needsUpdate.size - 1] = true;
                 needsUpdate.add(true);
 
+                if (closedPolygon) needsUpdate.items[0] = true;
+
                 vertexDataArray.add(new StripVertex());
                 verticesRotatedAndTranslated.add(new Vector2());
 
@@ -198,6 +200,32 @@ public class OutlinePolygon implements PrettyPolygon {
 
         }
 
+        public void removeVertex(int index) {
+                vertices.removeIndex(index);
+                verticesRotatedAndTranslated.removeIndex(index);
+                needsUpdate.removeIndex(index);
+                vertexDataArray.removeIndex(index);
+
+                changesToStripOrCulling = true;
+
+                if (vertices.size == 0) return;
+
+                int previous = (index - 1 + vertices.size) % vertices.size;
+
+                if (previous == vertices.size - 1 && closedPolygon) needsUpdate.items[previous] = true;
+                else if (previous >= 0) needsUpdate.items[previous] = true;
+
+
+                int next = index % vertices.size;
+
+                if (next == 0 && closedPolygon) needsUpdate.items[next] = true;
+                else if (next >= 0) needsUpdate.items[next] = true;
+
+        }
+
+        public int getVertexCount() {
+                return vertices.size;
+        }
 
         /**
          * Rounding of sharp corners can make the outlines look better.
@@ -349,18 +377,24 @@ public class OutlinePolygon implements PrettyPolygon {
                 auxVertexFinder.setClockwise(clockwisePolygon);
         }
 
-        /**
-         *
-         */
+        /**  */
         private void updateAllBoxIndices() {
                 while (boundingBoxes.size * verticesPerBox < vertices.size) {
+                        if (boundingBoxes.size >= 1) {
+                                boundingBoxes.items[boundingBoxes.size - 1].count = verticesPerBox;
+                        }
                         boundingBoxes.add(new BoundingBox(boundingBoxes.size * verticesPerBox, verticesPerBox));
                 }
                 while (boundingBoxes.size * verticesPerBox >= vertices.size + verticesPerBox) {
                         boundingBoxes.pop();
                 }
-                if (boundingBoxes.size > 0 && boundingBoxes.size * verticesPerBox != vertices.size) {
-                        boundingBoxes.peek().count = (vertices.size % verticesPerBox);
+                if (boundingBoxes.size > 0) {
+
+                        int n = vertices.size % verticesPerBox;
+                        if (n == 0) n = verticesPerBox;
+                        if (!closedPolygon) n--;
+                        boundingBoxes.peek().count = n;
+
                 }
         }
 
@@ -381,7 +415,7 @@ public class OutlinePolygon implements PrettyPolygon {
                                         rectangle.set(outside.items[0], outside.items[1], 0, 0);
                                 }
 
-                                {
+                                if (closedPolygon || n > 0) {
                                         int k = (box.begin - 1 + vertices.size) % vertices.size;
 
                                         if (drawInside) {
@@ -399,7 +433,7 @@ public class OutlinePolygon implements PrettyPolygon {
                                         }
                                 }
 
-                                {
+                                if (closedPolygon || n < vertices.size) {
                                         int k = (box.begin + box.count + vertices.size) % vertices.size;
 
                                         if (drawInside) {
