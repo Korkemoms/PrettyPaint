@@ -13,7 +13,7 @@ to set up and use.
 * Merge the outlines and align the textures of overlapping polygons.
 * Simple shadows or glow(just wider and less opaque outlines drawn behind)
 * Frustum culling
-* Draw background(s)    (super messy source code)
+* Draw background(s)
 
 ![Unmerged and unaligned. ](https://s3.eu-central-1.amazonaws.com/prettypaint/default.png "Unmerged and unaligned")
 ![Merged and aligned.](https://s3.eu-central-1.amazonaws.com/prettypaint/merged+and+aligned.png "Merged and aligned")
@@ -32,6 +32,13 @@ Here is a demo:
 
 [source](core/src/org/prettypaint/test/PrettyPaintDemo.java)
   
-[compiled](http://amsoftware.org/PrettyPaintDemo/)
+[compiled](http://amsoftware.org/PrettyPaintDemo/) (probably going to forget to update this one)
 
+# Stuff that is not so pretty
+Very sharp angles when combined with thick edges.
+
+# License
+* PrettyPaint:  <a href="https://opensource.org/licenses/MIT">MIT license</a>
+* poly2tri: <a href="http://opensource.org/licenses/BSD-3-Clause">New BSD License</a>
+* Clipper: <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License</a>
 
