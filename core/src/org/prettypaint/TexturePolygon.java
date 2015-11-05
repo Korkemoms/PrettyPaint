@@ -32,6 +32,7 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
+import org.core.Util;
 
 
 /**
@@ -284,7 +285,7 @@ public class TexturePolygon implements PrettyPolygon {
                 }
 
 
-                float[] triangles = RenderUtil.simplifyAndMakeTriangles(vertices);
+                float[] triangles = Util.simplifyAndMakeTriangles(vertices);
 
                 setTriangles(triangles);
 
@@ -334,8 +335,8 @@ public class TexturePolygon implements PrettyPolygon {
                         polygonRegions.addAll(newRegions);
 
                         setTextureTranslation(new Vector2(
-                                (float) Math.random() * MathUtils.random() * RenderUtil.getMaximumTranslationX(textureRegion),
-                                (float) Math.random() * MathUtils.random() * RenderUtil.getMaximumTranslationY(textureRegion)));
+                                (float) Math.random() * MathUtils.random() * Util.getMaximumTranslationX(textureRegion),
+                                (float) Math.random() * MathUtils.random() * Util.getMaximumTranslationY(textureRegion)));
                 }
                 return this;
         }
@@ -410,11 +411,11 @@ public class TexturePolygon implements PrettyPolygon {
                 actualTextureTranslation.set(x, y);
                 actualTextureTranslation.scl(scale);
 
-                actualTextureTranslation.x *= RenderUtil.getTextureAlignmentConstantX(textureRegion);
-                actualTextureTranslation.y *= RenderUtil.getTextureAlignmentConstantY(textureRegion);
+                actualTextureTranslation.x *= Util.getTextureAlignmentConstantX(textureRegion);
+                actualTextureTranslation.y *= Util.getTextureAlignmentConstantY(textureRegion);
 
-                actualTextureTranslation.x %= RenderUtil.getMaximumTranslationX(textureRegion);
-                actualTextureTranslation.y %= RenderUtil.getMaximumTranslationY(textureRegion);
+                actualTextureTranslation.x %= Util.getMaximumTranslationX(textureRegion);
+                actualTextureTranslation.y %= Util.getMaximumTranslationY(textureRegion);
 
                 return this;
         }
@@ -602,7 +603,7 @@ public class TexturePolygon implements PrettyPolygon {
         }
 
         /**
-         * When {@link #setVertices(Array)} is called it uses {@link RenderUtil#simplifyAndMakeTriangles(Array)} to calculate
+         * When {@link #setVertices(Array)} is called it uses {@link Util#simplifyAndMakeTriangles(Array)} to calculate
          * the triangles that are used for drawing. If you need these triangles for anything (for example for box2d fixtures)
          * you can get them here instead of calculating them all over again.
          *

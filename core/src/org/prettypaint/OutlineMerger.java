@@ -4,7 +4,8 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
-import org.clipper.*;
+import org.core.clipper.*;
+import org.core.Util;
 
 
 // TODO Comment
@@ -81,7 +82,7 @@ public class OutlineMerger {
                         n++;
 
                         for (int i = 0; i < vertices.size; i++) {
-                                RenderUtil.getEdge(vertices, i, tmp, tmp1);
+                                Util.getEdge(vertices, i, tmp, tmp1);
 
                                 shapeRenderer.line(tmp.x, tmp.y, tmp1.x, tmp1.y);
 
@@ -105,7 +106,7 @@ public class OutlineMerger {
                         OutlinePolygon or = toMerge.get(i);
                         or.myParents.clear();
 
-                        Path path = RenderUtil.convertToPath(or.getVerticesRotatedAndTranslated());
+                        Path path = Util.convertToPath(or.getVerticesRotatedAndTranslated());
 
                         alignReallyCloseVertices(previousPoints, path, 20d);
 
@@ -123,14 +124,14 @@ public class OutlineMerger {
 
                 for (Path path : simplifiedAndCleaned) {
 
-                        Array<Vector2> vertices = RenderUtil.convertToVectors(path);
+                        Array<Vector2> vertices = Util.convertToVectors(path);
 
                         Array<OutlinePolygon> thingsInThisArea = new Array<OutlinePolygon>(true, 4, OutlinePolygon.class);
                         for (OutlinePolygon outlinePolygon : toMerge) {
 
                                 Array<Vector2> vertices1 = outlinePolygon.getVerticesRotatedAndTranslated();
 
-                                if (RenderUtil.intersectEdges(vertices, vertices1)) {
+                                if (Util.intersectEdges(vertices, vertices1)) {
                                         thingsInThisArea.add(outlinePolygon);
 
                                 }

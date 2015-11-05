@@ -32,7 +32,7 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
-
+import org.core.Util;
 
 
 // TODO Clean and comment
@@ -93,11 +93,11 @@ public class Background {
 
                 textureTranslation.set(baseX, baseY);
 
-                textureTranslation.x *= RenderUtil.getTextureAlignmentConstantX(textureRegion);
-                textureTranslation.y *= RenderUtil.getTextureAlignmentConstantY(textureRegion);
+                textureTranslation.x *= Util.getTextureAlignmentConstantX(textureRegion);
+                textureTranslation.y *= Util.getTextureAlignmentConstantY(textureRegion);
 
-                textureTranslation.x %= RenderUtil.getMaximumTranslationX(textureRegion);
-                textureTranslation.y %= RenderUtil.getMaximumTranslationY(textureRegion);
+                textureTranslation.x %= Util.getMaximumTranslationX(textureRegion);
+                textureTranslation.y %= Util.getMaximumTranslationY(textureRegion);
 
         }
 
@@ -182,12 +182,12 @@ public class Background {
 
                 float[] triangles;
                 if (triangulationType == TRIANGULATION_TYPE.PIZZA) {
-                        Vector2 centroid = RenderUtil.polygonCentroid(vertices);
+                        Vector2 centroid = Util.polygonCentroid(vertices);
 
-                        triangles = RenderUtil.makePizzaTriangles(vertices, centroid);
+                        triangles = Util.makePizzaTriangles(vertices, centroid);
                 } else {
 
-                        triangles = RenderUtil.makeTriangles(vertices);
+                        triangles = Util.makeTriangles(vertices);
                 }
                 setTriangles(triangles);
 
@@ -246,8 +246,8 @@ public class Background {
                         polygonRegions.addAll(newRegions);
 
                         textureTranslation.set(
-                                (float) Math.random() * MathUtils.random() * RenderUtil.getMaximumTranslationX(textureRegion),
-                                (float) Math.random() * MathUtils.random() * RenderUtil.getMaximumTranslationY(textureRegion));
+                                (float) Math.random() * MathUtils.random() * Util.getMaximumTranslationX(textureRegion),
+                                (float) Math.random() * MathUtils.random() * Util.getMaximumTranslationY(textureRegion));
                 }
         }
 

@@ -30,6 +30,7 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
+import org.core.Util;
 
 
 /**
@@ -373,7 +374,7 @@ public class OutlinePolygon implements PrettyPolygon {
          * the vertices has been changed.
          */
         private void updateAuxVertexFinderClockwise() {
-                boolean clockwisePolygon = RenderUtil.clockwisePolygon(vertices);
+                boolean clockwisePolygon = Util.clockwisePolygon(vertices);
                 auxVertexFinder.setClockwise(clockwisePolygon);
         }
 
@@ -662,13 +663,13 @@ public class OutlinePolygon implements PrettyPolygon {
                         int dir = clockWisePolygon ? 1 : -1;
 
                         if (insideStrip) dir *= -1;
-                        RenderUtil.getEdge(vertices, (i + vertices.size - 1) % vertices.size, m1, m2);
+                        Util.getEdge(vertices, (i + vertices.size - 1) % vertices.size, m1, m2);
 
                         nor1.set(m2).sub(m1).nor().scl(halfWidth).rotate90(dir);
                         m1.add(nor1);
                         m2.add(nor1);
 
-                        RenderUtil.getEdge(vertices, (i + vertices.size) % vertices.size, n1, n2);
+                        Util.getEdge(vertices, (i + vertices.size) % vertices.size, n1, n2);
 
                         nor2.set(n2).sub(n1).nor().scl(halfWidth).rotate90(dir);
                         n1.add(nor2);
@@ -683,7 +684,7 @@ public class OutlinePolygon implements PrettyPolygon {
 
                 /** When the polygon is not closed we need auxiliary vertices to round the ending. */
                 private Vector2 getAuxBeginning(Array<Vector2> vertices, int i, float extraAngleRad) {
-                        RenderUtil.getEdge(vertices, i, m1, m2);
+                        Util.getEdge(vertices, i, m1, m2);
                         nor1.set(m1).sub(m2).nor().scl(halfWidth);
 
                         int dir = clockWisePolygon ? -1 : 1;
@@ -699,7 +700,7 @@ public class OutlinePolygon implements PrettyPolygon {
 
                 /** When the polygon is not closed we need auxiliary vertices to round the beginning. */
                 private Vector2 getAuxEnding(Array<Vector2> vertices, int i, float extraAngleRad) {
-                        RenderUtil.getEdge(vertices, (i - 1 + vertices.size) % vertices.size, m1, m2);
+                        Util.getEdge(vertices, (i - 1 + vertices.size) % vertices.size, m1, m2);
                         nor1.set(m2).sub(m1).nor().scl(halfWidth);
 
                         int dir = clockWisePolygon ? 1 : -1;
