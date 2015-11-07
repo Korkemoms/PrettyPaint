@@ -28,7 +28,7 @@ I have modified these libraries a little bit to make them work with GWT.
 # How to
 For now you must copy the source code from git if you want to try it.
 
-[Here](http://amsoftware.org/PrettyPaint/) are come compiled demos. The source code is [here](core/src/org/prettypaint/test/).
+[Here](http://amsoftware.org/PrettyPaint/) are come compiled demos. The source code is [here](https://github.com/Korkemoms/PrettyPaint/tree/master/core/src/org/ams/testapps).
 
 
 
