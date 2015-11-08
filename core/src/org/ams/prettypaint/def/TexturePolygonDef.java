@@ -39,6 +39,7 @@ public class TexturePolygonDef extends PrettyPolygonDef{
         public float textureAngle = 0;
         public String textureRegionName;
         public float textureScale = 0.01f;
+        public boolean drawCullingRectangles = false;
 
         public TexturePolygonDef(){
 
@@ -52,7 +53,6 @@ public class TexturePolygonDef extends PrettyPolygonDef{
                 textureTranslation.set(texturePolygon.getTextureTranslation());
 
                 angle = texturePolygon.getAngle();
-                drawDebugInfo = texturePolygon.isDrawingDebugInfo();
                 opacity = texturePolygon.getOpacity();
                 position.set(texturePolygon.getPosition());
                 scale = texturePolygon.getScale();

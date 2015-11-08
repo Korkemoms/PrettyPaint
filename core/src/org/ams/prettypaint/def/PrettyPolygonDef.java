@@ -38,7 +38,6 @@ public abstract class PrettyPolygonDef {
         public final Vector2 position = new Vector2();
         public float angle = 0;
         public final Array<Vector2> vertices = new Array<Vector2>();
-        public boolean drawDebugInfo = false;
         public float scale = 1;
         public float opacity = 1;
         public boolean visible = true;

@@ -68,6 +68,11 @@ public class FallingBoxes extends ApplicationAdapter implements InputProcessor {
 
         Texture texture;
 
+        @Override
+        public void dispose() {
+                if (polygonBatch != null) polygonBatch.dispose();
+                if (texture != null) texture.dispose();
+        }
 
         @Override
         public void create() {
@@ -79,6 +84,8 @@ public class FallingBoxes extends ApplicationAdapter implements InputProcessor {
                 camera = new OrthographicCamera(10, 10 * (h / w));
 
                 polygonBatch = new PrettyPolygonBatch();
+                polygonBatch.setDrawFrustum(true);
+                polygonBatch.setShrinkFrustumWhenItsDrawn(true);
 
                 world = new PPWorld();
 
@@ -144,6 +151,7 @@ public class FallingBoxes extends ApplicationAdapter implements InputProcessor {
                 // add texture
                 TexturePolygon texturePolygon = new TexturePolygon();
                 texturePolygon.setTextureRegion(new TextureRegion(texture));
+                texturePolygon.setDrawCullingRectangles(true);
                 circle.setTexturePolygon(texturePolygon);
 
                 // add outline

@@ -90,7 +90,7 @@ public class OutlinePolygon implements PrettyPolygon {
 
         private Array<BoundingBox> boundingBoxes = new Array<BoundingBox>(true, 4, BoundingBox.class);
 
-        private PrettyPolygonBatch.DebugRenderer debugRenderer;
+        private DebugRenderer debugRenderer;
         private final Color debugFillGreen = new Color(0, 1, 0, 0.1f);
         private final Color debugFillRed = new Color(1, 0, 0, 0.1f);
 
@@ -118,13 +118,11 @@ public class OutlinePolygon implements PrettyPolygon {
         /** Used by a {@link PrettyPolygonBatch} to determine if it should stop debug rendering this polygon. */
         private long timeOfLastDrawCall;
 
-        private boolean drawBoundingBoxesForDebugDraw = true;
-        private boolean drawTriangleStripsForDebugDraw = true;
-        private boolean drawLineFromFirstToLastForDebugDraw = true;
+        private boolean drawCullingRectangles = false;
+        private boolean drawTriangleStrips = false;
+        private boolean drawLineFromFirstToLast = false;
 
         private boolean changesToStripOrCulling = false;
-
-        private boolean drawDebugInfo = false;
 
         public OutlinePolygon() {
                 this(null);
@@ -132,10 +130,54 @@ public class OutlinePolygon implements PrettyPolygon {
 
         /** Draws anti aliased polygon edges. */
         public OutlinePolygon(OutlinePolygonDef outlinePolygonDef) {
-                debugRenderer = new PrettyPolygonBatch.DebugRenderer(this) {
+
+
+                debugRenderer = new DebugRenderer(this) {
+
                         @Override
                         public void draw(ShapeRenderer shapeRenderer) {
-                                debugDraw(shapeRenderer);
+                                if (drawCullingRectangles)
+                                        drawCullingRectangles(shapeRenderer, Color.GREEN);
+
+
+                                if (drawLineFromFirstToLast)
+                                        drawLineFromFirstToLast(shapeRenderer, Color.BLUE);
+
+
+                                if (drawTriangleStrips)
+                                        drawTriangleStrips(shapeRenderer, Color.RED, Color.ORANGE);
+
+                        }
+
+                        @Override
+                        void update() {
+                                super.update();
+                                boolean enabled = drawLineFromFirstToLast;
+                                enabled |= drawCullingRectangles;
+                                enabled |= drawTriangleStrips;
+
+                                enabled &= myParents.size == 0;
+
+                                boolean change = this.enabled != enabled;
+                                if (!change) return;
+
+                                this.enabled = enabled;
+
+                                debugColors.clear();
+
+                                if (drawCullingRectangles) {
+                                        debugColors.add(new DebugColor(Color.GREEN, "Bounding box"));
+                                }
+                                if (drawLineFromFirstToLast) {
+                                        debugColors.add(new DebugColor(Color.BLUE, "Line from first to last vertex in bounding box"));
+                                }
+                                if (drawTriangleStrips) {
+                                        debugColors.add(new DebugColor(Color.RED, "Triangle strip visualization"));
+                                        debugColors.add(new DebugColor(Color.ORANGE, "Triangle strip visualization"));
+
+                                }
+
+
                         }
                 };
 
@@ -151,9 +193,9 @@ public class OutlinePolygon implements PrettyPolygon {
                         setWeight(outlinePolygonDef.weight);
                         setRoundSharpCorners(outlinePolygonDef.roundSharpCorners);
 
-                        setDrawLineFromFirstToLastForDebugDraw(outlinePolygonDef.drawLineFromFirstToLastForDebugDraw);
-                        setDrawBoundingBoxesForDebugDraw(outlinePolygonDef.drawBoundingBoxesForDebugDraw);
-                        setDrawTriangleStripsForDebugDraw(outlinePolygonDef.drawTriangleStripsForDebugDraw);
+                        setDrawLineFromFirstToLast(outlinePolygonDef.drawLineFromFirstToLast);
+                        setDrawCullingRectangles(outlinePolygonDef.drawBoundingBoxes);
+                        setDrawTriangleStrips(outlinePolygonDef.drawTriangleStrips);
 
 
                         setVisible(outlinePolygonDef.visible);
@@ -161,7 +203,6 @@ public class OutlinePolygon implements PrettyPolygon {
                         setScale(outlinePolygonDef.scale);
                         setAngle(outlinePolygonDef.angle);
                         setPosition(outlinePolygonDef.position);
-                        setDrawDebugInfo(outlinePolygonDef.drawDebugInfo);
                         setOpacity(outlinePolygonDef.opacity);
 
                 }
@@ -309,7 +350,7 @@ public class OutlinePolygon implements PrettyPolygon {
 
                 if (myChildren.size == 0 || drawInvocations >= myChildren.size) {
 
-                        queueDebugDrawIfEnabled(batch);
+                        debugRenderer.queueIfEnabled(batch);
 
                         timeOfLastDrawCall = System.currentTimeMillis();
                         // if i don't have any children i will just attempt to draw right away
@@ -338,12 +379,12 @@ public class OutlinePolygon implements PrettyPolygon {
                                         // if we reached here we can draw the vertices within this particular BoundingBox
 
                                         if (drawInside) {
-                                                batch.drawOutline(vertexDataArray, closedPolygon, true, box.begin, box.begin + box.count + 1,
+                                                batch.drawOutline(vertexDataArray, closedPolygon, true, box.begin, box.begin + box.count + 1, box.dataCount,
                                                         tmpColor, scale, angleRad, position.x, position.y, weight);
                                         }
 
                                         if (drawOutside) {
-                                                batch.drawOutline(vertexDataArray, closedPolygon, false, box.begin, box.begin + box.count + 1,
+                                                batch.drawOutline(vertexDataArray, closedPolygon, false, box.begin, box.begin + box.count + 1, box.dataCount,
                                                         tmpColor, scale, angleRad, position.x, position.y, weight);
                                         }
                                 }
@@ -352,11 +393,6 @@ public class OutlinePolygon implements PrettyPolygon {
                 return this;
         }
 
-        private void queueDebugDrawIfEnabled(PrettyPolygonBatch batch) {
-                if (drawDebugInfo)
-                        if (!batch.debugRendererArray.contains(debugRenderer, true))
-                                batch.debugRendererArray.add(debugRenderer);
-        }
 
         /**
          * When you call methods like for example {@link #setHalfWidth(float)} or {@link #updateVertex(int, float, float)}
@@ -435,6 +471,8 @@ public class OutlinePolygon implements PrettyPolygon {
         private void updateBoxCulling(BoundingBox box) {
                 Rectangle rectangle = box.rectangle;
 
+                box.dataCount = 0;
+
                 boolean initialized = false;
                 for (int n = box.begin; n < box.begin + box.count; n++) {
 
@@ -455,6 +493,7 @@ public class OutlinePolygon implements PrettyPolygon {
                                                 Array<Float> _inside = vertexDataArray.items[k].insideVertexData;
                                                 for (int i = 0; i < _inside.size; i += 3) {
                                                         rectangle.merge(_inside.items[i], _inside.items[i + 1]);
+                                                        box.dataCount++;
                                                 }
                                         }
 
@@ -462,6 +501,7 @@ public class OutlinePolygon implements PrettyPolygon {
                                                 Array<Float> _outside = vertexDataArray.items[k].outsideVertexData;
                                                 for (int i = 0; i < _outside.size; i += 3) {
                                                         rectangle.merge(_outside.items[i], _outside.items[i + 1]);
+                                                        box.dataCount++;
                                                 }
                                         }
                                 }
@@ -473,6 +513,7 @@ public class OutlinePolygon implements PrettyPolygon {
                                                 Array<Float> _inside = vertexDataArray.items[k].insideVertexData;
                                                 for (int i = 0; i < _inside.size; i += 3) {
                                                         rectangle.merge(_inside.items[i], _inside.items[i + 1]);
+                                                        box.dataCount++;
                                                 }
                                         }
 
@@ -480,6 +521,7 @@ public class OutlinePolygon implements PrettyPolygon {
                                                 Array<Float> _outside = vertexDataArray.items[k].outsideVertexData;
                                                 for (int i = 0; i < _outside.size; i += 3) {
                                                         rectangle.merge(_outside.items[i], _outside.items[i + 1]);
+                                                        box.dataCount++;
                                                 }
                                         }
                                 }
@@ -490,11 +532,13 @@ public class OutlinePolygon implements PrettyPolygon {
                         if (drawInside)
                                 for (int i = 0; i < inside.size; i += 3) {
                                         rectangle.merge(inside.items[i], inside.items[i + 1]);
+                                        box.dataCount++;
                                 }
 
                         if (drawOutside)
                                 for (int i = 0; i < outside.size; i += 3) {
                                         rectangle.merge(outside.items[i], outside.items[i + 1]);
+                                        box.dataCount++;
                                 }
                 }
         }
@@ -1009,161 +1053,144 @@ public class OutlinePolygon implements PrettyPolygon {
         }
 
         /** For debugging. */
-        public OutlinePolygon setDrawDebugInfo(boolean debugDraw) {
-                this.drawDebugInfo = debugDraw;
+        public OutlinePolygon setDrawCullingRectangles(boolean drawCullingRectangles) {
+                this.drawCullingRectangles = drawCullingRectangles;
+                debugRenderer.update();
                 return this;
         }
 
         /** For debugging. */
-        public boolean isDrawingDebugInfo() {
-                return drawDebugInfo;
+        public boolean isDrawingCullingRectangles() {
+                return drawCullingRectangles;
         }
 
+
         /** For debugging. */
-        public OutlinePolygon setDrawBoundingBoxesForDebugDraw(boolean drawBoundingBoxesForDebugDraw) {
-                this.drawBoundingBoxesForDebugDraw = drawBoundingBoxesForDebugDraw;
+        public OutlinePolygon setDrawTriangleStrips(boolean drawTriangleStrips) {
+                this.drawTriangleStrips = drawTriangleStrips;
+                debugRenderer.update();
                 return this;
         }
 
         /** For debugging. */
-        public boolean isDrawingBoundingBoxesForDebugDraw() {
-                return drawBoundingBoxesForDebugDraw;
+        public boolean isDrawingTriangleStrips() {
+                return drawTriangleStrips;
         }
 
-
         /** For debugging. */
-        public OutlinePolygon setDrawTriangleStripsForDebugDraw(boolean drawTriangleStripsForDebugDraw) {
-                this.drawTriangleStripsForDebugDraw = drawTriangleStripsForDebugDraw;
+        public OutlinePolygon setDrawLineFromFirstToLast(boolean drawLineFromFirstToLast) {
+                this.drawLineFromFirstToLast = drawLineFromFirstToLast;
+                debugRenderer.update();
                 return this;
         }
 
         /** For debugging. */
-        public boolean isDrawingTriangleStripsForDebugDraw() {
-                return drawTriangleStripsForDebugDraw;
+        public boolean isDrawingLineFromFirstToLast() {
+                return drawLineFromFirstToLast;
         }
 
-        /** For debugging. */
-        public OutlinePolygon setDrawLineFromFirstToLastForDebugDraw(boolean drawLineFromFirstToLastForDebugDraw) {
-                this.drawLineFromFirstToLastForDebugDraw = drawLineFromFirstToLastForDebugDraw;
-                return this;
-        }
+        private void drawCullingRectangles(ShapeRenderer shapeRenderer, Color color) {
+                for (BoundingBox br : boundingBoxes) {
 
-        /** For debugging. */
-        public boolean isDrawingLineFromFirstToLastForDebugDraw() {
-                return drawLineFromFirstToLastForDebugDraw;
-        }
+                        Rectangle r = br.rectangle;
+                        Rectangle cullingArea = getCullingArea(tmpRectangle, r, angleRad, position, scale);
 
-        /**
-         * Draw bounding rectangle(rotated) and culling area(never rotated,
-         * contains the bounding rectangle) for each triangle.
-         * <p>
-         * Also draws a blue line from the beginning vertex
-         * to the count vertex of each BoundingBox.
-         */
-        private void debugDraw(ShapeRenderer shapeRenderer) {
-                if (myParents.size > 0) {
-                        return;
+                        shapeRenderer.set(ShapeRenderer.ShapeType.Filled);
+
+
+                        Color fillColor = tmpColor.set(color);
+                        fillColor.a *= 0.25f;
+
+                        shapeRenderer.setColor(fillColor);
+
+
+                        shapeRenderer.rect(cullingArea.x, cullingArea.y, cullingArea.width, cullingArea.height);
+
+                        tmp.set(r.x, r.y).rotateRad(angleRad).add(position);
+                        tmp1.set(r.x + r.width, r.y).rotateRad(angleRad).add(position);
+                        tmp2.set(r.x + r.width, r.y + r.height).rotateRad(angleRad).add(position);
+                        tmp3.set(r.x, r.y + r.height).rotateRad(angleRad).add(position);
+
+                        shapeRenderer.set(ShapeRenderer.ShapeType.Line);
+                        shapeRenderer.setColor(color);
+
+                        shapeRenderer.line(tmp, tmp1);
+                        shapeRenderer.line(tmp1, tmp2);
+                        shapeRenderer.line(tmp2, tmp3);
+                        shapeRenderer.line(tmp3, tmp);
+
+
                 }
+        }
 
-                if (drawBoundingBoxesForDebugDraw)
-                        for (BoundingBox br : boundingBoxes) {
+        private void drawLineFromFirstToLast(ShapeRenderer shapeRenderer, Color color) {
+                shapeRenderer.setColor(color);
+                for (BoundingBox br : boundingBoxes) {
 
-                                Rectangle r = br.rectangle;
-                                Rectangle cullingArea = getCullingArea(tmpRectangle, r, angleRad, position, scale);
-
-                                shapeRenderer.set(ShapeRenderer.ShapeType.Filled);
-                                shapeRenderer.setColor(frustum.overlaps(cullingArea) ? debugFillGreen : debugFillRed);
-                                shapeRenderer.rect(cullingArea.x, cullingArea.y, cullingArea.width, cullingArea.height);
-
-                                tmp.set(r.x, r.y).rotateRad(angleRad).add(position);
-                                tmp1.set(r.x + r.width, r.y).rotateRad(angleRad).add(position);
-                                tmp2.set(r.x + r.width, r.y + r.height).rotateRad(angleRad).add(position);
-                                tmp3.set(r.x, r.y + r.height).rotateRad(angleRad).add(position);
-
-                                shapeRenderer.set(ShapeRenderer.ShapeType.Line);
-                                shapeRenderer.setColor(frustum.overlaps(cullingArea) ? Color.GREEN : Color.RED);
-
-                                shapeRenderer.line(tmp, tmp1);
-                                shapeRenderer.line(tmp1, tmp2);
-                                shapeRenderer.line(tmp2, tmp3);
-                                shapeRenderer.line(tmp3, tmp);
+                        tmp.set(vertices.items[br.begin]);
+                        tmp.rotateRad(angleRad);
+                        tmp.scl(scale);
+                        tmp.add(position);
 
 
-                        }
+                        tmp1.set(vertices.items[(br.begin + br.count) % vertices.size]);
+                        tmp1.rotateRad(angleRad);
+                        tmp1.scl(scale);
+                        tmp1.add(position);
+
+                        shapeRenderer.line(tmp, tmp1);
+
+                }
+        }
 
 
-                if (drawLineFromFirstToLastForDebugDraw) {
-                        shapeRenderer.setColor(Color.BLUE);
-                        for (BoundingBox br : boundingBoxes) {
+        private void drawTriangleStrips(ShapeRenderer shapeRenderer, Color color, Color color1) {
+                for (int i = 0; i < vertexDataArray.size; i++) {
+                        StripVertex bb = vertexDataArray.items[i];
 
-                                tmp.set(vertices.items[br.begin]);
+                        Array<Float> data = bb.insideVertexData;
+                        for (int j = 0; j < data.size - 3; ) {
+
+                                shapeRenderer.setColor(j == 0 ? color : color1);
+
+                                tmp.x = data.items[j];
+                                tmp.y = data.items[j + 1];
                                 tmp.rotateRad(angleRad);
                                 tmp.scl(scale);
                                 tmp.add(position);
 
-
-                                tmp1.set(vertices.items[(br.begin + br.count) % vertices.size]);
+                                tmp1.x = data.items[j + 3];
+                                tmp1.y = data.items[j + 4];
                                 tmp1.rotateRad(angleRad);
                                 tmp1.scl(scale);
                                 tmp1.add(position);
+                                j += 3;
 
                                 shapeRenderer.line(tmp, tmp1);
-
                         }
-                }
+                        data = bb.outsideVertexData;
+                        for (int j = 0; j < data.size - 3; ) {
 
+                                shapeRenderer.setColor(j == 0 ? Color.ORANGE : Color.RED);
 
-                if (drawTriangleStripsForDebugDraw) {
+                                tmp.x = data.items[j];
+                                tmp.y = data.items[j + 1];
+                                tmp.rotateRad(angleRad);
+                                tmp.scl(scale);
+                                tmp.add(position);
 
+                                tmp1.x = data.items[j + 3];
+                                tmp1.y = data.items[j + 4];
+                                tmp1.rotateRad(angleRad);
+                                tmp1.scl(scale);
+                                tmp1.add(position);
+                                j += 3;
 
-                        for (int i = 0; i < vertexDataArray.size; i++) {
-                                StripVertex bb = vertexDataArray.items[i];
-
-                                Array<Float> data = bb.insideVertexData;
-                                for (int j = 0; j < data.size - 3; ) {
-
-                                        shapeRenderer.setColor(j == 0 ? Color.ORANGE : Color.RED);
-
-                                        tmp.x = data.items[j];
-                                        tmp.y = data.items[j + 1];
-                                        tmp.rotateRad(angleRad);
-                                        tmp.scl(scale);
-                                        tmp.add(position);
-
-                                        tmp1.x = data.items[j + 3];
-                                        tmp1.y = data.items[j + 4];
-                                        tmp1.rotateRad(angleRad);
-                                        tmp1.scl(scale);
-                                        tmp1.add(position);
-                                        j += 3;
-
-                                        shapeRenderer.line(tmp, tmp1);
-                                }
-                                data = bb.outsideVertexData;
-                                for (int j = 0; j < data.size - 3; ) {
-
-                                        shapeRenderer.setColor(j == 0 ? Color.ORANGE : Color.RED);
-
-                                        tmp.x = data.items[j];
-                                        tmp.y = data.items[j + 1];
-                                        tmp.rotateRad(angleRad);
-                                        tmp.scl(scale);
-                                        tmp.add(position);
-
-                                        tmp1.x = data.items[j + 3];
-                                        tmp1.y = data.items[j + 4];
-                                        tmp1.rotateRad(angleRad);
-                                        tmp1.scl(scale);
-                                        tmp1.add(position);
-                                        j += 3;
-
-                                        shapeRenderer.line(tmp, tmp1);
-                                }
-
+                                shapeRenderer.line(tmp, tmp1);
                         }
+
                 }
         }
-
 
         /**
          * The BoundingBox is for dividing outlines into different parts.
@@ -1180,6 +1207,8 @@ public class OutlinePolygon implements PrettyPolygon {
                 int begin;
                 /** The number of vertices that this bounding rectangle include. */
                 int count;
+
+                int dataCount;
 
                 /**
                  * This box needs a culling update when:

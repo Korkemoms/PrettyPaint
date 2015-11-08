@@ -56,6 +56,7 @@ public class CircleAndBackground extends ApplicationAdapter implements InputProc
 
 
         TexturePolygon background;
+        Texture texture;
 
 
         OutlinePolygon shadowPolygon;
@@ -65,6 +66,13 @@ public class CircleAndBackground extends ApplicationAdapter implements InputProc
         float rotationAccumulator = 0;
 
         Array<Vector2> circleVertices = new Array<Vector2>();
+
+        @Override
+        public void dispose() {
+                if (batch != null) batch.dispose();
+                if (texture != null) texture.dispose();
+
+        }
 
         @Override
         public void create() {
@@ -110,7 +118,7 @@ public class CircleAndBackground extends ApplicationAdapter implements InputProc
                 cameraBounds.add(new Vector2(-hw, hh));
 
                 // prepare background
-                Texture texture = new Texture("skulls.png");
+                texture = new Texture("skulls.png");
                 texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
 
                 background = new TexturePolygon();

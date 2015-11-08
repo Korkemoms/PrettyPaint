@@ -42,17 +42,17 @@ public class OutlinePolygonDef extends PrettyPolygonDef {
         public float weight = 1;
         public final Color color = new Color(Color.BLACK);
         public boolean closedPolygon = true;
-        public boolean drawBoundingBoxesForDebugDraw = true;
-        public boolean drawTriangleStripsForDebugDraw = true;
-        public boolean drawLineFromFirstToLastForDebugDraw = true;
+        public boolean drawBoundingBoxes = false;
+        public boolean drawTriangleStrips = false;
+        public boolean drawLineFromFirstToLast = false;
 
         public OutlinePolygonDef(OutlinePolygon outlinePolygon) {
 
                 closedPolygon = outlinePolygon.isClosedPolygon();
                 color.set(outlinePolygon.getColor());
-                drawBoundingBoxesForDebugDraw = outlinePolygon.isDrawingBoundingBoxesForDebugDraw();
-                drawLineFromFirstToLastForDebugDraw = outlinePolygon.isDrawingLineFromFirstToLastForDebugDraw();
-                drawTriangleStripsForDebugDraw = outlinePolygon.isDrawingTriangleStripsForDebugDraw();
+                drawBoundingBoxes = outlinePolygon.isDrawingCullingRectangles();
+                drawLineFromFirstToLast = outlinePolygon.isDrawingLineFromFirstToLast();
+                drawTriangleStrips = outlinePolygon.isDrawingTriangleStrips();
                 drawInside = outlinePolygon.isInsideDrawn();
                 drawOutside = outlinePolygon.isOutsideDrawn();
                 halfWidth = outlinePolygon.getHalfWidth();
@@ -60,7 +60,6 @@ public class OutlinePolygonDef extends PrettyPolygonDef {
                 weight = outlinePolygon.getWeight();
 
                 angle = outlinePolygon.getAngle();
-                drawDebugInfo = outlinePolygon.isDrawingDebugInfo();
                 opacity = outlinePolygon.getOpacity();
                 position.set(outlinePolygon.getPosition());
                 scale = outlinePolygon.getScale();

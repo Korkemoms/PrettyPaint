@@ -75,21 +75,6 @@ public interface PrettyPolygon {
         PrettyPolygon setVertices(Array<Vector2> vertices);
 
         /**
-         * When true draws debug information.
-         *
-         * @param debugDraw Whether to draw debug information.
-         * @return this for chaining.
-         */
-        PrettyPolygon setDrawDebugInfo(boolean debugDraw);
-
-        /**
-         * When true draws debug information.
-         *
-         * @return whether debug information is being drawn.
-         */
-        boolean isDrawingDebugInfo();
-
-        /**
          * @return the angle of the polygon in radians.
          */
         float getAngle();

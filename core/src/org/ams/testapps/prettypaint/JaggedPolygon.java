@@ -52,13 +52,22 @@ public class JaggedPolygon extends ApplicationAdapter implements InputProcessor 
 
 
         PrettyPolygonBatch polygonBatch;
+
         TexturePolygon texturePolygon;
+        Texture texture;
+
         OutlinePolygon shadowPolygon;
         OutlinePolygon outlinePolygon;
 
         float accumulator = 0;
 
         Array<Vector2> vertices = new Array<Vector2>();
+
+        @Override
+        public void dispose() {
+                if (polygonBatch != null) polygonBatch.dispose();
+                if (texture != null) texture.dispose();
+        }
 
         @Override
         public void create() {
@@ -94,13 +103,13 @@ public class JaggedPolygon extends ApplicationAdapter implements InputProcessor 
                 shadowPolygon.setColor(new Color(0, 0, 0, 0.4f));
                 shadowPolygon.setHalfWidth(outlinePolygon.getHalfWidth() * 5);
 
-                //shadowPolygon.setDrawDebugInfo(batch,true);
-                //shadowPolygon.setDrawBoundingBoxesForDebugDraw(true);
-                //shadowPolygon.setDrawTriangleStripsForDebugDraw(false);
-                //shadowPolygon.setDrawLineFromFirstToLastForDebugDraw(true);
+                //shadowPolygon.setDrawFrustum(batch,true);
+                //shadowPolygon.setDrawCullingRectangles(true);
+                //shadowPolygon.setDrawTriangleStrips(false);
+                //shadowPolygon.setDrawLineFromFirstToLast(true);
 
 
-                Texture texture = new Texture("contemporary_china.png");
+                texture = new Texture("contemporary_china.png");
                 texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
 
                 texturePolygon = new TexturePolygon();
@@ -116,7 +125,7 @@ public class JaggedPolygon extends ApplicationAdapter implements InputProcessor 
                 Gdx.gl20.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
 
-                accumulator += Gdx.graphics.getDeltaTime()*0.1f;
+                accumulator += Gdx.graphics.getDeltaTime() * 0.1f;
                 float sin = MathUtils.sin(accumulator % MathUtils.PI);
 
                 float scale = Interpolation.fade.apply(sin);

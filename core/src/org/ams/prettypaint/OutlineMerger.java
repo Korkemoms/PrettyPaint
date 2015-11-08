@@ -39,13 +39,13 @@ public class OutlineMerger {
 
         private Array<Array<Vector2>> debug = new Array<Array<Vector2>>();
 
-        private PrettyPolygonBatch.DebugRenderer debugRenderer;
+        private DebugRenderer debugRenderer;
 
         private boolean verbose = false;
 
         // TODO Comment
         public OutlineMerger() {
-                debugRenderer = new PrettyPolygonBatch.DebugRenderer(null) {
+                debugRenderer = new DebugRenderer(null) {
                         @Override
                         public void draw(ShapeRenderer shapeRenderer) {
                                 debugDraw(shapeRenderer);

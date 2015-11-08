@@ -58,7 +58,7 @@ public class TexturePolygon implements PrettyPolygon {
         private final Vector2 tmpVector = new Vector2();
         /** These are all triangles. */
         private final Array<PolygonRegion> polygonRegions;
-        private final PrettyPolygonBatch.DebugRenderer debugRenderer;
+        private final DebugRenderer debugRenderer;
         private float angleRad = 0f;
         private float scale = 1f;
         private float textureScale = 0.01f;
@@ -84,7 +84,8 @@ public class TexturePolygon implements PrettyPolygon {
         private float textureAngle = 0;
         /** The last time */
         protected long timeOfLastRender;
-        private boolean drawDebugInfo = false;
+
+        private boolean drawCullingRectangles = false;
 
         /** Used by a {@link PrettyPolygonBatch} to determine if it should stop debug rendering this polygon. */
         private long timeOfLastDrawCall;
@@ -104,10 +105,26 @@ public class TexturePolygon implements PrettyPolygon {
          */
         public TexturePolygon(TexturePolygonDef texturePolygonDef, TextureAtlas textureAtlas) {
                 polygonRegions = new Array<PolygonRegion>(true, 4, PolygonRegion.class);
-                debugRenderer = new PrettyPolygonBatch.DebugRenderer(this) {
+                debugRenderer = new DebugRenderer(this) {
                         @Override
                         public void draw(ShapeRenderer shapeRenderer) {
-                                debugDraw(shapeRenderer);
+                                if (drawCullingRectangles)
+                                        drawCullingRectangles(shapeRenderer, debugColors.first().color);
+                        }
+
+                        @Override
+                        void update() {
+                                super.update();
+                                boolean enabled = drawCullingRectangles;
+                                boolean change = enabled != this.enabled;
+                                if (!change) return;
+
+                                this.enabled = enabled;
+
+                                debugColors.clear();
+                                debugColors.add(new DebugColor(Color.PURPLE, "Texture culling rectangle"));
+
+
                         }
                 };
 
@@ -128,7 +145,6 @@ public class TexturePolygon implements PrettyPolygon {
 
                         setAngle(texturePolygonDef.angle);
                         setPosition(texturePolygonDef.position);
-                        setDrawDebugInfo(texturePolygonDef.drawDebugInfo);
                         setOpacity(texturePolygonDef.opacity);
                         setScale(texturePolygonDef.scale);
                         setVertices(texturePolygonDef.vertices);
@@ -138,6 +154,15 @@ public class TexturePolygon implements PrettyPolygon {
                 }
         }
 
+        public TexturePolygon setDrawCullingRectangles(boolean drawCullingRectangles) {
+                this.drawCullingRectangles = drawCullingRectangles;
+                debugRenderer.update();
+                return this;
+        }
+
+        public boolean isDrawingCullingRectangles() {
+                return drawCullingRectangles;
+        }
 
         @Override
         public long getTimeOfLastDrawCall() {
@@ -220,9 +245,9 @@ public class TexturePolygon implements PrettyPolygon {
          *
          * @param shapeRenderer can draw rectangles.
          */
-        private void debugDraw(ShapeRenderer shapeRenderer) {
+        private void drawCullingRectangles(ShapeRenderer shapeRenderer, Color color) {
                 shapeRenderer.set(ShapeRenderer.ShapeType.Line);
-                shapeRenderer.setColor(Color.GREEN);
+                shapeRenderer.setColor(color);
 
                 float scale = this.textureScale * this.scale;
 
@@ -248,15 +273,14 @@ public class TexturePolygon implements PrettyPolygon {
                 if (!visible) return this;
                 if (opacity <= 0) return this;
 
+                debugRenderer.queueIfEnabled(batch);
 
                 Texture texture = textureRegion.getTexture();
 
                 float textureWidth = texture.getWidth();
                 float textureHeight = texture.getHeight();
 
-                float srcHeight = textureRegion.getRegionHeight() / textureHeight;
-
-                float tex_width_and_height = srcHeight;
+                float tex_width_and_height = textureRegion.getRegionHeight() / textureHeight;
 
                 timeOfLastDrawCall = System.currentTimeMillis();
 
@@ -266,7 +290,6 @@ public class TexturePolygon implements PrettyPolygon {
 
                 long now = System.currentTimeMillis();
 
-                queueDebugDrawIfEnabled(batch);
 
                 for (int i = 0; i < polygonRegions.size; i++) {
                         PolygonRegion pr = polygonRegions.items[i];
@@ -419,34 +442,6 @@ public class TexturePolygon implements PrettyPolygon {
         }
 
 
-        private void queueDebugDrawIfEnabled(PrettyPolygonBatch batch) {
-                if (drawDebugInfo)
-                        if (!batch.debugRendererArray.contains(debugRenderer, true))
-                                batch.debugRendererArray.add(debugRenderer);
-        }
-
-        /**
-         * When true draws the culling rectangles of the triangles.
-         *
-         * @param debugDraw Whether to draw debug information.
-         * @return this for chaining.
-         */
-        @Override
-        public TexturePolygon setDrawDebugInfo(boolean debugDraw) {
-                this.drawDebugInfo = debugDraw;
-                return this;
-        }
-
-        /**
-         * Whether debug information is being drawn.
-         *
-         * @return this for chaining.
-         */
-        @Override
-        public boolean isDrawingDebugInfo() {
-                return drawDebugInfo;
-        }
-
         /**
          * Source translation allows you move the texture around within the polygon.
          * <p>
@@ -547,7 +542,7 @@ public class TexturePolygon implements PrettyPolygon {
         public TexturePolygon setTextureScale(float textureScale) {
                 this.textureScale = textureScale;
                 if (triangles != null) {
-                        if(textureRegion==null)setTrianglesLater = true;
+                        if (textureRegion == null) setTrianglesLater = true;
                         else setTriangles(triangles);
                 }
                 return this;

@@ -33,7 +33,9 @@ package org.ams.prettypaint;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.*;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.PolygonRegion;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
@@ -80,7 +82,7 @@ public class PrettyPolygonBatch {
         protected Matrix4 worldView = new Matrix4();
 
         private ShaderProgram shaderProgram;
-        private boolean drawDebugInfo = false;
+        private boolean drawFrustum = false;
 
         /** How much data currently stored in {@link #data}. */
         private int dataCount = 0;
@@ -91,7 +93,17 @@ public class PrettyPolygonBatch {
         /** Draws lines and shapes used for debugging. */
         private ShapeRenderer shapeRenderer;
 
-        private boolean shrinkFrustumForDebugDraw;
+        /** Font for debugging. */
+        private BitmapFont debugFont;
+
+        /** Draws text used for debugging. */
+        private SpriteBatch debugSpriteBatch;
+
+        private boolean shrinkFrustumWhenDrawn;
+
+        private DebugRenderer debugRenderer;
+
+        private Array<Color> debugColorsTaken = new Array<Color>();
 
         /**
          * When other classes want to draw something for debugging purposes they can add
@@ -99,11 +111,44 @@ public class PrettyPolygonBatch {
          */
         protected Array<DebugRenderer> debugRendererArray = new Array<DebugRenderer>(true, 4, DebugRenderer.class);
 
+        private OrthographicCamera debugCamera;
+
+
         /**
          * For every frame: call one of the begin methods, then pass this batch to a {@link PrettyPolygon}s draw method. After you have done
          * that with all your Polygons you call {@link #end()};
          */
         public PrettyPolygonBatch() {
+
+
+                debugRenderer = new DebugRenderer() {
+
+
+                        @Override
+                        void draw(ShapeRenderer shapeRenderer) {
+                                drawFrustum(shapeRenderer, debugColors.first().color);
+                        }
+
+                        @Override
+                        void update() {
+                                super.update();
+                                boolean enabled = drawFrustum;
+                                boolean change = enabled != this.enabled;
+                                if (!change) return;
+                                this.enabled = enabled;
+
+                                debugColors.clear();
+                                if (drawFrustum) {
+                                        debugColors.add(new DebugColor(Color.CYAN, "Frustum"));
+                                }
+
+                                if (!enabled) {
+                                        debugRendererArray.removeValue(this, true);
+                                }
+                        }
+                };
+
+
                 shaderProgram = new ShaderProgram(Shader.vertexShader, Shader.fragmentShader);
 
                 if (!shaderProgram.isCompiled())
@@ -130,6 +175,8 @@ public class PrettyPolygonBatch {
                 if (shaderProgram != null) shaderProgram.dispose();
                 if (mesh != null) mesh.dispose();
                 if (shapeRenderer != null) shapeRenderer.dispose();
+                if (debugFont != null) debugFont.dispose();
+                if (debugSpriteBatch != null) debugSpriteBatch.dispose();
         }
 
         /**
@@ -161,6 +208,7 @@ public class PrettyPolygonBatch {
         public void begin(Matrix4 worldView, Rectangle frustum) {
                 this.frustum.set(frustum);
                 this.worldView.set(worldView);
+
                 begin();
 
         }
@@ -168,10 +216,12 @@ public class PrettyPolygonBatch {
         private void begin() {
                 isStarted = true;
 
+                debugRenderer.queueIfEnabled(this);
+
                 shaderProgram.begin();
                 shaderProgram.setUniformMatrix("u_worldView", this.worldView);
 
-                if (drawDebugInfo && shrinkFrustumForDebugDraw) {
+                if (drawFrustum && shrinkFrustumWhenDrawn) {
                         float padding = (float) Math.sqrt(this.frustum.area()) * 0.1f;
                         this.frustum.x += padding;
                         this.frustum.y += padding;
@@ -191,41 +241,45 @@ public class PrettyPolygonBatch {
         }
 
         /**
+         * For debugging.
          * This can be used to verify that the frustum culling is working.
          *
-         * @return whether the frustum is being shrunk when debug drawing.
+         * @return whether the frustum is being shrunk when its drawn.
          */
-        public boolean isShrinkingFrustumForDebugDraw() {
-                return shrinkFrustumForDebugDraw;
+        public boolean isShrinkingFrustumWhenItsDrawn() {
+                return shrinkFrustumWhenDrawn;
         }
 
         /**
+         * For debugging.
          * This can be used to verify that the frustum culling is working.
          *
-         * @param shrinkFrustumForDebugDraw whether to shrink the frustum when debug drawing.
+         * @param shrinkFrustumForDebugDraw whether to shrink the frustum when drawing it.
          */
-        public void setShrinkFrustumForDebugDraw(boolean shrinkFrustumForDebugDraw) {
-                this.shrinkFrustumForDebugDraw = shrinkFrustumForDebugDraw;
+        public void setShrinkFrustumWhenItsDrawn(boolean shrinkFrustumForDebugDraw) {
+                this.shrinkFrustumWhenDrawn = shrinkFrustumForDebugDraw;
         }
 
         /**
-         * This can be used to manually inspect some functionality.
-         * For now it only shows information about the frustum.
+         * For debugging.
+         * This can be used to verify that the frustum culling is working.
+         * See also {@link #setShrinkFrustumWhenItsDrawn(boolean)}.
          *
-         * @param debugDraw whether to draw debug information.
+         * @param drawFrustum whether to draw an outline showing the frustum.
          */
-        public void setDrawDebugInfo(boolean debugDraw) {
-                this.drawDebugInfo = debugDraw;
+        public void setDrawFrustum(boolean drawFrustum) {
+                this.drawFrustum = drawFrustum;
+                debugRenderer.update();
         }
 
         /**
-         * This can be used to manually inspect some functionality.
-         * For now it only shows information about the frustum.
+         * For debugging.
+         * This can be used to verify that the frustum culling is working.
          *
-         * @return whether debug information is being drawn.
+         * @return whether the frustum is drawn.
          */
-        public boolean isDrawingDebugInfo() {
-                return drawDebugInfo;
+        public boolean isDrawingFrustum() {
+                return drawFrustum;
         }
 
         // TODO Comment
@@ -335,7 +389,7 @@ public class PrettyPolygonBatch {
          * @param translation_y how much to translate the outline vertically
          * @param weight        the weight of the outline(higher gives bolder edges)
          */
-        protected void drawOutline(Array<OutlinePolygon.StripVertex> stripVertices, boolean closed, boolean inside, int begin, int end, Color color, float scale, float angleRad,
+        protected void drawOutline(Array<OutlinePolygon.StripVertex> stripVertices, boolean closed, boolean inside, int begin, int end, int total, Color color, float scale, float angleRad,
                                    float translation_x, float translation_y, float weight) {
                 if (!isStarted) throw new RuntimeException("You must call begin() before calling this method.");
 
@@ -353,14 +407,17 @@ public class PrettyPolygonBatch {
                         end = stripVertices.size;
                 }
 
+                int amountOfDataThisTime = (2 + total) * dataPerVertex;
+                if (dataCount + amountOfDataThisTime > maxData) {
+                        flush();
+                }
+
+
                 {
 
                         OutlinePolygon.StripVertex stripVertex = stripVertices.items[begin];
                         Array<Float> vertexData = inside ? stripVertex.insideVertexData : stripVertex.outsideVertexData;
 
-                        if (dataCount + dataPerVertex > maxData) {
-                                flush();
-                        }
 
                         pos.x = vertexData.items[0] * scale;
                         pos.y = vertexData.items[1] * scale;
@@ -383,13 +440,6 @@ public class PrettyPolygonBatch {
                         int n = i >= end - 1 ? 4 : vertexData.size;
                         if (!closed && i >= stripVertices.size - 1 && (end - begin) > 1) n = vertexData.size;
 
-
-                        float vertexCount = n / 3f;
-                        float totalData = dataPerVertex * vertexCount;
-                        if (dataCount + totalData > maxData) {
-                                flush();
-                        }
-
                         for (int j = 0; j < n; ) {
                                 pos.x = vertexData.items[j++] * scale;
                                 pos.y = vertexData.items[j++] * scale;
@@ -404,9 +454,6 @@ public class PrettyPolygonBatch {
                 }
 
                 { // degenerate in order to travel from the previous vertex without drawing anything
-                        if (dataCount + dataPerVertex > maxData) {
-                                flush();
-                        }
 
                         dataCount = setOutlineVertexData(pos.x, pos.y, colorInvisibleAsFloatBits, dataCount, weight);
                 }
@@ -454,21 +501,30 @@ public class PrettyPolygonBatch {
 
 
         private void doAllDebugDrawing() {
-                if (debugRendererArray.size == 0 && !drawDebugInfo) return;
+                if (debugRendererArray.size == 0) return;
 
                 if (shapeRenderer == null) {
                         shapeRenderer = new ShapeRenderer();
                         shapeRenderer.setAutoShapeType(true);
                 }
 
-
-                shapeRenderer.begin();
-                shapeRenderer.setProjectionMatrix(worldView);
-
-                if (drawDebugInfo) {
-                        debugDraw(shapeRenderer);
+                if (debugSpriteBatch == null) {
+                        debugSpriteBatch = new SpriteBatch();
                 }
 
+                if (debugFont == null) {
+                        debugFont = new BitmapFont();
+                }
+
+                if (debugCamera == null) {
+                        debugCamera = new OrthographicCamera();
+                }
+
+
+                shapeRenderer.begin();
+
+                // draw the debug stuff
+                shapeRenderer.setProjectionMatrix(worldView);
                 long now = System.currentTimeMillis();
                 for (int i = debugRendererArray.size - 1; i >= 0; i--) {
                         DebugRenderer debugRenderer = debugRendererArray.items[i];
@@ -478,38 +534,68 @@ public class PrettyPolygonBatch {
                         // if it is more than one second since the last time
                         // the owner of this debugRenderer did any normal drawing
                         // then we stop the debug rendering of it
-                        if (debugRenderer.owner.getTimeOfLastDrawCall() + 1000 < now) {
+
+                        if (debugRenderer.owner != null && debugRenderer.owner.getTimeOfLastDrawCall() + 1000 < now) {
                                 debugRendererArray.removeIndex(i);
                         }
                 }
 
+                // draw short colored lines that will be beside some text explaining what the color of the line means
+                debugCamera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+                debugCamera.position.set(
+                        Gdx.graphics.getWidth() * 0.5f,
+                        Gdx.graphics.getHeight() * -0.5f+10,
+                        debugCamera.position.z);
+
+                debugCamera.update();
+                shapeRenderer.setProjectionMatrix(debugCamera.combined);
+
+                debugColorsTaken.clear();
+
+                float verticalSpacing = 20;
+
+                int n = 0;
+                for (DebugRenderer debugRenderer : debugRendererArray) {
+                        Array<DebugRenderer.DebugColor> colors = debugRenderer.getDebugColors();
+
+                        for (DebugRenderer.DebugColor debugColor : colors) {
+                                if (debugColorsTaken.contains(debugColor.color, false)) continue;
+                                debugColorsTaken.add(debugColor.color);
+
+                                float y = n++ * -verticalSpacing - 5;
+                                shapeRenderer.setColor(debugColor.color);
+                                shapeRenderer.line(10, y, 25, y);
+                        }
+                }
 
                 shapeRenderer.end();
 
+                debugSpriteBatch.begin();
+                debugSpriteBatch.setProjectionMatrix(debugCamera.combined);
+
+                // draw explanatory text
+                n = 0;
+                for (DebugRenderer debugRenderer : debugRendererArray) {
+                        Array<DebugRenderer.DebugColor> colors = debugRenderer.getDebugColors();
+
+                        for (DebugRenderer.DebugColor debugColor : colors) {
+                                if (!debugColorsTaken.contains(debugColor.color, true)) continue;
+
+                                drawText(debugColor.charSequence, 30, n++ * -verticalSpacing);
+                        }
+                }
+
+                debugSpriteBatch.end();
+
         }
 
-        private void debugDraw(ShapeRenderer shapeRenderer) {
+        private void drawText(CharSequence text, float x, float y) {
+                debugFont.draw(debugSpriteBatch, text, x, y);
+        }
+
+        private void drawFrustum(ShapeRenderer shapeRenderer, Color color) {
                 shapeRenderer.set(ShapeRenderer.ShapeType.Line);
-                shapeRenderer.setColor(Color.CYAN);
+                shapeRenderer.setColor(color);
                 shapeRenderer.rect(frustum.x, frustum.y, frustum.width, frustum.height);
-        }
-
-        /**
-         * A {@link PrettyPolygon} add a DebugRenderer to {@link #debugRendererArray}.
-         * It will then have its {@link #draw(ShapeRenderer)} method called after the
-         * batch is done drawing its normal things.
-         * <p>
-         * This is a public class because GWT doesn't want to compile otherwise.
-         */
-        public static class DebugRenderer {
-
-                public PrettyPolygon owner;
-
-                public DebugRenderer(PrettyPolygon owner) {
-                        this.owner = owner;
-                }
-
-                void draw(ShapeRenderer shapeRenderer) {
-                }
         }
 }
