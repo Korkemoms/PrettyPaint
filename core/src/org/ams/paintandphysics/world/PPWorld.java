@@ -28,7 +28,7 @@ package org.ams.paintandphysics.world;
 
 import com.badlogic.gdx.utils.Array;
 import org.ams.paintandphysics.things.PPThing;
-import org.ams.paintandphysics.things.def.PPThingDef;
+import org.ams.paintandphysics.things.PPThingDef;
 import org.ams.physics.world.BoxWorld;
 import org.ams.physics.world.def.BoxWorldDef;
 import org.ams.prettypaint.PrettyPolygonBatch;

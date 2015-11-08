@@ -29,16 +29,11 @@ package org.ams.paintandphysics.things;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
-import org.ams.paintandphysics.things.def.PPThingDef;
-import org.ams.physics.things.JointThing;
 import org.ams.physics.things.Polygon;
 import org.ams.physics.things.Thing;
-import org.ams.physics.things.ThingWithBody;
-import org.ams.physics.things.def.DefParser;
 import org.ams.prettypaint.OutlinePolygon;
 import org.ams.prettypaint.PrettyPolygonBatch;
 import org.ams.prettypaint.TexturePolygon;
-import org.ams.prettypaint.def.OutlinePolygonDef;
 
 /**
  * Created by Andreas on 07.11.2015.

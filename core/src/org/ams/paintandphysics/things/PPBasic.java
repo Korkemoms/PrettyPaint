@@ -29,7 +29,6 @@ package org.ams.paintandphysics.things;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
-import org.ams.paintandphysics.things.def.PPThingDef;
 import org.ams.physics.things.JointThing;
 import org.ams.physics.things.Polygon;
 import org.ams.physics.things.Thing;

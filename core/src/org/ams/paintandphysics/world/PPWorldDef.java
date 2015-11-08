@@ -28,7 +28,7 @@ package org.ams.paintandphysics.world;
 
 import com.badlogic.gdx.utils.Array;
 import org.ams.paintandphysics.things.PPThing;
-import org.ams.paintandphysics.things.def.PPThingDef;
+import org.ams.paintandphysics.things.PPThingDef;
 
 /**
  * Created by Andreas on 07.11.2015.
