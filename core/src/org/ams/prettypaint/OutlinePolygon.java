@@ -208,6 +208,25 @@ public class OutlinePolygon implements PrettyPolygon {
                 }
         }
 
+        public Rectangle getBoundingRectangle() {
+
+                Rectangle rectangle = new Rectangle();
+                boolean initialized = false;
+
+                for (BoundingBox boundingBox : boundingBoxes) {
+                        updateBoxCulling(boundingBox);
+
+                        Rectangle cullingArea = getCullingArea(tmpRectangle, boundingBox.rectangle, angleRad, position, scale);
+
+                        if (!initialized) {
+                                rectangle.set(cullingArea);
+                                initialized = true;
+                        } else rectangle.merge(cullingArea);
+                }
+                return rectangle;
+
+        }
+
         @Override
         public OutlinePolygon setOpacity(float opacity) {
                 this.opacity = opacity;
@@ -397,7 +416,7 @@ public class OutlinePolygon implements PrettyPolygon {
         /**
          * When you call methods like for example {@link #setHalfWidth(float)} or {@link #updateVertex(int, float, float)}
          * work is being queued up. Before each draw call this method is automatically called to do all this work.
-         * <p>
+         * <p/>
          * It can be smart to call this method after you are done configuring your OutlinePolygon, but before you
          * exit your loading screen. This way you do more work during the loading screen and get less initial lag.
          */
@@ -1196,7 +1215,7 @@ public class OutlinePolygon implements PrettyPolygon {
          * The BoundingBox is for dividing outlines into different parts.
          * Each box can be rendered independently of the others,
          * it is therefore convenient for frustum culling.
-         * <p>
+         * <p/>
          * This is a public class because GWT doesn't want to compile otherwise.
          */
         public static class BoundingBox {
@@ -1231,7 +1250,7 @@ public class OutlinePolygon implements PrettyPolygon {
          * contains the user vertex and all the other vertices associated with it.
          * It is ordered so that when passed to the gpu, together with the previous and next vertex, a
          * pretty triangle strip is formed.
-         * <p>
+         * <p/>
          * This is a public class because GWT doesn't want to compile otherwise.
          */
         public static class StripVertex {

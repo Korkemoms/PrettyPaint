@@ -50,7 +50,7 @@ import org.ams.prettypaint.TexturePolygon;
 /**
  * This is a demo showing how to use PrettyPaint to draw a pretty polygon.
  */
-public class FallingBoxes extends ApplicationAdapter implements InputProcessor {
+public class SaveThingAsPng extends ApplicationAdapter implements InputProcessor {
 
         // It is best to use a OrthographicCamera with PrettyPaint
         OrthographicCamera camera;
@@ -62,11 +62,11 @@ public class FallingBoxes extends ApplicationAdapter implements InputProcessor {
         PrettyPolygonBatch polygonBatch;
         PPWorld world;
 
-        float accumulator;
-
-        int added;
-
         Texture texture;
+
+        PPPolygon square;
+        PPCircle circle;
+
 
         @Override
         public void dispose() {
@@ -91,53 +91,12 @@ public class FallingBoxes extends ApplicationAdapter implements InputProcessor {
                 texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
 
 
-                addGround(texture);
+                square = addSquare(texture);
+                circle = addCircle(texture);
 
         }
 
-        private void addGround(Texture texture) {
-                PPPolygon ground = new PPPolygon();
-
-                // add box2d polygon
-                PolygonDef def = new PolygonDef();
-                def.type = BodyDef.BodyType.StaticBody;
-                ground.setPhysicsThing(new Polygon(def));
-
-                // add texture
-                TexturePolygon texturePolygon = new TexturePolygon();
-                texturePolygon.setTextureRegion(new TextureRegion(texture));
-                ground.setTexturePolygon(texturePolygon);
-
-                // add outline
-                OutlinePolygon outlinePolygon = new OutlinePolygon();
-                ground.getOutlinePolygons().add(outlinePolygon);
-
-                // add shadow
-                OutlinePolygon shadowPolygon = new OutlinePolygon();
-                shadowPolygon.setColor(new Color(0, 0, 0, 0.35f));
-                shadowPolygon.setHalfWidth(0.2f);
-                shadowPolygon.setDrawInside(false);
-                ground.getOutlinePolygons().add(shadowPolygon);
-
-                // set properties of all 4
-                float hw = 12f;
-                float hh = 3f;
-
-                Array<Vector2> vertices = new Array<Vector2>();
-                vertices.add(new Vector2(-hw, -hh));
-                vertices.add(new Vector2(hw, -hh));
-                vertices.add(new Vector2(hw, hh));
-                vertices.add(new Vector2(-hw, hh));
-
-                ground.setVertices(vertices);
-
-                world.addThing(ground);
-
-
-                ground.setPosition(0, -4f);
-        }
-
-        private void addCircle(Texture texture) {
+        private PPCircle addCircle(Texture texture) {
                 // make a moving circle with texture and outlines
                 PPCircle circle = new PPCircle();
 
@@ -159,17 +118,19 @@ public class FallingBoxes extends ApplicationAdapter implements InputProcessor {
 
                 circle.setRadius(radius);
                 circle.setVertexCount(30);
-                circle.setPosition(0, 10);
+                circle.setPosition(0, 5);
 
                 world.addThing(circle);
+                return circle;
         }
 
-        private void addSquare(Texture texture) {
+        private PPPolygon addSquare(Texture texture) {
                 // make a moving square with texture and outlines
                 PPPolygon square = new PPPolygon();
 
                 // add box2d polygon
                 PolygonDef def = new PolygonDef();
+                def.type = BodyDef.BodyType.StaticBody;
                 square.setPhysicsThing(new Polygon(def));
 
                 // add texture
@@ -192,11 +153,13 @@ public class FallingBoxes extends ApplicationAdapter implements InputProcessor {
                 vertices.add(new Vector2(-hw, hh));
 
                 square.setVertices(vertices);
-                square.setPosition(0, 10);
+                square.setPosition(0, 0);
 
                 world.addThing(square);
+                return square;
         }
 
+        int i = 0;
 
         @Override
         public void render() {
@@ -204,24 +167,22 @@ public class FallingBoxes extends ApplicationAdapter implements InputProcessor {
                 Gdx.gl20.glClear(GL20.GL_COLOR_BUFFER_BIT);
                 float delta = Gdx.graphics.getDeltaTime();
 
+
                 polygonBatch.begin(camera);
+
                 world.step(delta);
                 world.draw(polygonBatch);
 
-                accumulator += delta;
 
-                if (accumulator > 1) {
-                        accumulator -= 1;
+                polygonBatch.end();
 
+                if (i++ ==4) {
+                        square.saveAsPng(polygonBatch, "test.png", 1f);
+                        circle.saveAsPng(polygonBatch, "test.png", 1f);
 
-                        added++;
-                        if (added % 2 == 0)
-                                addCircle(texture);
-                        else addSquare(texture);
                 }
 
 
-                polygonBatch.end();
         }
 
 

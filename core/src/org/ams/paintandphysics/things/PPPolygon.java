@@ -62,7 +62,7 @@ public class PPPolygon implements PPWithBody {
         /**
          * Initialize from definition. The atlas is needed to find the {@link com.badlogic.gdx.graphics.g2d.TextureRegion}
          * specified in the {@link org.ams.prettypaint.def.TexturePolygonDef}.
-         * <p>
+         * <p/>
          * All the definition attributes in the {@link PPThingDef} are optional.
          *
          * @param def   the definition that sets this polygons properties.
@@ -82,6 +82,14 @@ public class PPPolygon implements PPWithBody {
                 basic.draw(batch);
                 return this;
         }
+
+        @Override
+        public PPPolygon saveAsPng(PrettyPolygonBatch batch, String fileName, float scale) {
+                basic.saveAsPng(batch, fileName, scale);
+                return this;
+        }
+
+
 
         /**
          * Set the position of all the polygons.

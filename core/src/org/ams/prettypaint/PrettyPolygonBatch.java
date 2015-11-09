@@ -87,7 +87,7 @@ public class PrettyPolygonBatch {
         /** How much data currently stored in {@link #data}. */
         private int dataCount = 0;
 
-        private boolean isStarted = false;
+        public boolean isStarted = false;
         private Texture lastTexture = null;
 
         /** Draws lines and shapes used for debugging. */

@@ -57,4 +57,7 @@ public interface PPThing {
         PPThing setOpacity(float opacity);
 
         PPThing setVisible(boolean visible);
+
+        PPThing saveAsPng(PrettyPolygonBatch batch, String fileName, float scale);
+
 }

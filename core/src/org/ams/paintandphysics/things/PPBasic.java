@@ -26,9 +26,19 @@
 
 package org.ams.paintandphysics.things;
 
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.graphics.*;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.glutils.FrameBuffer;
+import com.badlogic.gdx.math.Matrix4;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.ScreenUtils;
+import org.ams.core.CoordinateHelper;
 import org.ams.physics.things.JointThing;
 import org.ams.physics.things.Polygon;
 import org.ams.physics.things.Thing;
@@ -39,15 +49,19 @@ import org.ams.prettypaint.PrettyPolygonBatch;
 import org.ams.prettypaint.TexturePolygon;
 import org.ams.prettypaint.def.OutlinePolygonDef;
 
+import javax.imageio.ImageIO;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
 /**
  * The PPBasic combines a {@link Thing} with a {@link TexturePolygon} and {@link OutlinePolygon}'s.
  * It does not need to have any or all of these members, you can choose which you want to use.
  * It can have several {@link OutlinePolygon}'s.
- * <p>
+ * <p/>
  * There are convenient methods for updating properties of all the things at once, like
  * {@link #setOpacity(float)}.
- *
- *
+ * <p/>
+ * <p/>
  * There are no methods for getting the properties however, as they may be different
  * for each polygon.
  */
@@ -80,7 +94,7 @@ class PPBasic implements PPThing {
         /**
          * Initialize from definition. The atlas is needed to find the {@link com.badlogic.gdx.graphics.g2d.TextureRegion}
          * specified in the {@link org.ams.prettypaint.def.TexturePolygonDef}.
-         * <p>
+         * <p/>
          * All the definition attributes in the {@link PPThingDef} are optional.
          *
          * @param def   the definition that sets this polygons properties.
@@ -141,6 +155,118 @@ class PPBasic implements PPThing {
                 }
 
                 return this;
+        }
+
+        /**
+         * @param batch    batch for drawing.
+         * @param fileName name of the png, will be saved in assets folder.
+         * @param quality  higher means larger resolution.
+         * @return this for chaining.
+         */
+        public PPBasic saveAsPng(PrettyPolygonBatch batch, String fileName, float quality) {
+                texturePolygon.setPosition(0, 0);
+                for (OutlinePolygon outlinePolygon : outlinePolygons) {
+                        outlinePolygon.setPosition(0, 0);
+                }
+
+
+                OrthographicCamera camera = new OrthographicCamera();
+
+                Rectangle boundingRectangle = outlinePolygons.first().getBoundingRectangle();
+
+                float w = Gdx.graphics.getWidth();
+                float h = Gdx.graphics.getHeight();
+
+                float dim = Math.max(boundingRectangle.width, boundingRectangle.height) * 2;
+
+                camera.setToOrtho(false, dim, dim * (h / w));
+                camera.zoom = 0.5f + 1 / quality;
+
+                camera.position.set(0, 0,
+                        camera.position.z);
+
+                camera.update();
+
+                Gdx.gl20.glClearColor(1, 1, 1, 0);
+                Gdx.gl20.glClear(GL20.GL_COLOR_BUFFER_BIT);
+                batch.begin(camera);
+
+                texturePolygon.draw(batch);
+                batch.end();
+                Pixmap one = okok(batch, camera, boundingRectangle);
+
+
+                for (OutlinePolygon outlinePolygon : outlinePolygons) {
+                        Gdx.gl20.glClearColor(1, 1, 1, 0);
+                        Gdx.gl20.glClear(GL20.GL_COLOR_BUFFER_BIT);
+                        batch.begin(camera);
+                        outlinePolygon.draw(batch);
+                        batch.end();
+                        Pixmap two = okok(batch, camera, boundingRectangle);
+
+                        one.drawPixmap(two, 0, 0);
+                }
+
+                FileHandle fh;
+                do {
+                        fh = new FileHandle("PPTextures/" + "PPTexture" + counter++ + ".png");
+                } while (fh.exists());
+
+                PixmapIO.writePNG(fh, one);
+
+                return this;
+        }
+
+
+
+        private Pixmap okok(PrettyPolygonBatch batch, OrthographicCamera camera, Rectangle boundingRectangle) {
+
+                Vector2 center = CoordinateHelper.getScreenCoordinates(
+                        camera,
+                        boundingRectangle.x + boundingRectangle.getWidth() * 0.5f,
+                        boundingRectangle.y + boundingRectangle.getHeight() * 0.5f,
+                        new Vector2());
+
+                Vector2 upperRight = CoordinateHelper.getScreenCoordinates(
+                        camera,
+                        boundingRectangle.x + boundingRectangle.getWidth(),
+                        boundingRectangle.y + boundingRectangle.getHeight(),
+                        new Vector2());
+
+
+                int half = (int) (upperRight.x - center.x);
+
+                Pixmap pixmap = getScreenshot((int) (center.x - half), (int) (center.y - half), half * 2, half * 2, true);
+
+                return pixmap;
+        }
+
+
+        private static int counter = 1;
+
+        private static Pixmap getScreenshot(int x, int y, int w, int h, boolean yDown) {
+
+                Gdx.gl.glPixelStorei(GL20.GL_PACK_ALIGNMENT, 1);
+
+                final Pixmap pixmap = new Pixmap(w, h, Pixmap.Format.RGBA8888);
+                ByteBuffer pixels = pixmap.getPixels();
+                Gdx.gl.glReadPixels(x, y, w, h, GL20.GL_RGBA, GL20.GL_UNSIGNED_BYTE, pixels);
+
+                if (yDown) {
+                        // Flip the pixmap upside down
+                        int numBytes = w * h * 4;
+                        byte[] lines = new byte[numBytes];
+                        int numBytesPerLine = w * 4;
+                        for (int i = 0; i < h; i++) {
+                                pixels.position((h - i - 1) * numBytesPerLine);
+                                pixels.get(lines, i * numBytesPerLine, numBytesPerLine);
+                        }
+                        pixels.clear();
+                        pixels.put(lines);
+                        pixels.clear();
+                }
+
+                return pixmap;
         }
 
         /**

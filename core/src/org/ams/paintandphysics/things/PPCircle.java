@@ -68,7 +68,7 @@ public class PPCircle implements PPWithBody {
         /**
          * Initialize from definition. The atlas is needed to find the {@link com.badlogic.gdx.graphics.g2d.TextureRegion}
          * specified in the {@link org.ams.prettypaint.def.TexturePolygonDef}.
-         * <p>
+         * <p/>
          * All the definition attributes in the {@link PPThingDef} are optional.
          *
          * @param def   the definition that sets this polygons properties.
@@ -100,7 +100,7 @@ public class PPCircle implements PPWithBody {
 
                 Array<Vector2> vertices = new Array<Vector2>();
 
-                float step = MathUtils.PI2 / (float)vertexCount;
+                float step = MathUtils.PI2 / (float) vertexCount;
 
                 for (float i = 0; i < vertexCount; i++) {
                         Vector2 v = new Vector2(radius, 0);
@@ -125,6 +125,12 @@ public class PPCircle implements PPWithBody {
         public PPCircle setVertexCount(int vertexCount) {
                 verticesMustBeUpdated |= this.vertexCount != vertexCount;
                 this.vertexCount = vertexCount;
+                return this;
+        }
+
+        @Override
+        public PPCircle saveAsPng(PrettyPolygonBatch batch, String fileName, float scale) {
+                basic.saveAsPng(batch, fileName, scale);
                 return this;
         }
 
