@@ -26,6 +26,7 @@
 
 package org.ams.prettypaint;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
@@ -64,20 +65,12 @@ public class OutlineMerger {
                 };
         }
 
-        /**
-         * For debugging.
-         *
-         * @param verbose whether to talk a lot on System.out.
-         */
+        /** For debugging. */
         public void setVerbose(boolean verbose) {
                 this.verbose = verbose;
         }
 
-        /**
-         * For debugging.
-         *
-         * @return whether i talk a lot on System.out.
-         */
+        /** For debugging. */
         public boolean isVerbose() {
                 return verbose;
         }
@@ -164,7 +157,7 @@ public class OutlineMerger {
 
                 if (toMerge.size == 0) return;
                 long begin = System.currentTimeMillis();
-                if (verbose) System.out.println("Auto outlining " + toMerge.size + " things");
+                if (verbose) Gdx.app.log("OutlineMerger", "Auto outlining " + toMerge.size + " things");
 
 
                 // merge all overlapping into new polygons
@@ -194,7 +187,7 @@ public class OutlineMerger {
                 Paths simplifiedAndCleaned = simplified.cleanPolygons(20d);
 
                 if (verbose)
-                        System.out.println("Auto outlining resulted in " + simplifiedAndCleaned.size() + " patches.");
+                        Gdx.app.log("OutlineMerger", "Auto outlining resulted in " + simplifiedAndCleaned.size() + " patches.");
 
                 // clipper has now done all the hard work
 
@@ -245,7 +238,7 @@ public class OutlineMerger {
 
                 if (verbose) {
                         long end = System.currentTimeMillis();
-                        System.out.println("Auto outlining took " + (end - begin) + " milliseconds.");
+                        Gdx.app.log("OutlineMerger", "Auto outlining took " + (end - begin) + " milliseconds.");
                 }
         }
 
@@ -268,7 +261,7 @@ public class OutlineMerger {
 
                                 if (dst < radius) {
                                         if (verbose)
-                                                System.out.println("replacing " + testPoint + " with " + previousPoint);
+                                                Gdx.app.log("OutlineMerger", "replacing " + testPoint + " with " + previousPoint);
 
                                         testPoint.set(previousPoint);
                                 }

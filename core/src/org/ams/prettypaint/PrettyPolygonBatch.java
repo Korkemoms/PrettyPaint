@@ -152,7 +152,7 @@ public class PrettyPolygonBatch {
                 shaderProgram = new ShaderProgram(Shader.vertexShader, Shader.fragmentShader);
 
                 if (!shaderProgram.isCompiled())
-                        System.out.println("PrettyPolygonBatch shader-program not compiled!");
+                        Gdx.app.log("PrettyPolygonBatch","PrettyPolygonBatch shader-program not compiled!");
 
                 Mesh.VertexDataType vertexDataType = Mesh.VertexDataType.VertexBufferObject;
                 if (Gdx.gl30 != null) {

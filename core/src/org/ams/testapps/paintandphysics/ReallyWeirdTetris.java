@@ -64,12 +64,71 @@ public class ReallyWeirdTetris extends ApplicationAdapter {
 
         float dim = 0.5f;
 
-        Float[] longBlock = new Float[]{
+        Float[] longPiece = new Float[]{
                 0f, 0f,
                 dim, 0f,
                 dim, dim * 4f,
                 0f, dim * 4f
         };
+
+        Float[] lPiece = new Float[]{
+                0f, 0f,
+                dim * 2f, 0f,
+                dim * 2f, dim,
+                dim, dim,
+                dim, dim * 3f,
+                0f, dim * 3f
+        };
+
+        Float[] otherLPiece = new Float[]{
+                -0f, 0f,
+                -dim * 2f, 0f,
+                -dim * 2f, dim,
+                -dim, dim,
+                -dim, dim * 3f,
+                -0f, dim * 3f
+        };
+
+        Float[] squarePiece = new Float[]{
+                0f, 0f,
+                dim * 2f, 0f,
+                dim * 2f, dim * 2f,
+                0f, dim * 2f
+        };
+
+        Float[] thatOtherPiece = new Float[]{
+                0f, 0f,
+                dim * 3f, 0f,
+                dim * 3f, dim,
+                dim * 2f, dim,
+                dim * 2f, dim * 2f,
+                dim, dim * 2f,
+                dim, dim,
+                0f, dim
+        };
+
+        Float[] zPiece = new Float[]{
+                0f, 0f,
+                dim * 2f, 0f,
+                dim * 2f, dim,
+                dim * 3f, dim,
+                dim * 3f, dim * 2f,
+                dim, dim * 2f,
+                dim, dim,
+                0f, dim
+        };
+
+        Float[] otherZPiece = new Float[]{
+                -0f, 0f,
+                -dim * 2f, 0f,
+                -dim * 2f, dim,
+                -dim * 3f, dim,
+                -dim * 3f, dim * 2f,
+                -dim, dim * 2f,
+                -dim, dim
+                - 0f, dim
+        };
+
 
         Float[] wallVertices = new Float[]{
                 -4f, 0.5f,
@@ -79,7 +138,7 @@ public class ReallyWeirdTetris extends ApplicationAdapter {
         };
 
 
-        Array<Float[]> blocks = new Array<Float[]>();
+        Array<Float[]> pieces = new Array<Float[]>();
 
         Texture texture;
 
@@ -118,17 +177,17 @@ public class ReallyWeirdTetris extends ApplicationAdapter {
 
                 Gdx.input.setInputProcessor(inputMultiplexer);
 
-                texture = new Texture("mainme2.png");
+                texture = new Texture("tv test.png");
                 texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
 
 
                 ground = addWall(texture, wallVertices);
-                ground.setPosition(4, 1.5f);
-                ground.setAngle(MathUtils.PI*0.5f);
+                ground.setPosition(0, -3.5f);
 
 
                 rightWall = addWall(texture, wallVertices);
-                rightWall.setPosition(2.3f, 1);
+                rightWall.setAngle(MathUtils.PI * 0.5f);
+                rightWall.setPosition(4, 0);
 
                 leftWall = addWall(texture, wallVertices);
                 leftWall.setAngle(MathUtils.PI * 0.5f);
@@ -136,11 +195,36 @@ public class ReallyWeirdTetris extends ApplicationAdapter {
 
 
                 Array<OutlinePolygon> toMerge = new Array<OutlinePolygon>();
-                toMerge.addAll(ground.getOutlinePolygons());
-                toMerge.addAll(rightWall.getOutlinePolygons());
-                //toMerge.addAll(leftWall.getOutlinePolygons());
+                toMerge.add(ground.getOutlinePolygons().first());
+                toMerge.add(rightWall.getOutlinePolygons().first());
+                toMerge.add(leftWall.getOutlinePolygons().first());
 
-                //new OutlineMerger().mergeOutlines(toMerge);
+                OutlineMerger outlineMerger = new OutlineMerger();
+                outlineMerger.mergeOutlines(toMerge);
+
+
+                toMerge = new Array<OutlinePolygon>();
+                toMerge.add(ground.getOutlinePolygons().peek());
+                toMerge.add(rightWall.getOutlinePolygons().peek());
+                toMerge.add(leftWall.getOutlinePolygons().peek());
+
+                outlineMerger.mergeOutlines(toMerge);
+
+
+                Array<TexturePolygon> toAlign = new Array<TexturePolygon>();
+                toAlign.add(ground.getTexturePolygon());
+                toAlign.addAll(leftWall.getTexturePolygon());
+                toAlign.add(rightWall.getTexturePolygon());
+
+                new TextureAligner().alignTextures(toAlign, true);
+
+                pieces.add(longPiece);
+                pieces.add(lPiece);
+                pieces.add(otherLPiece);
+                pieces.add(squarePiece);
+                pieces.add(thatOtherPiece);
+                pieces.add(zPiece);
+                pieces.add(otherZPiece);
 
 
         }
@@ -157,18 +241,11 @@ public class ReallyWeirdTetris extends ApplicationAdapter {
 
                 accumulator += delta;
 
-                if ( accumulator > 1) {
+                if (accumulator > 1) {
                         accumulator -= 1;
-                       // addBlock(texture, longBlock);
-
-
-
-                        Array<TexturePolygon> toAlign = new Array<TexturePolygon>();
-                        toAlign.add(ground.getTexturePolygon());
-                        toAlign.add(rightWall.getTexturePolygon());
-
-                        new TextureAligner().alignTextures(toAlign, true);
+                        addPiece(texture, pieces.get(world.boxWorld.things.size % pieces.size));
                 }
+
 
                 polygonBatch.end();
 
@@ -193,9 +270,8 @@ public class ReallyWeirdTetris extends ApplicationAdapter {
 
                 // add shadow
                 OutlinePolygon shadowPolygon = new OutlinePolygon();
-                shadowPolygon.setColor(new Color(0, 0, 0, 0.35f));
-                shadowPolygon.setHalfWidth(0.2f);
-                shadowPolygon.setDrawInside(false);
+                shadowPolygon.setColor(new Color(0, 0, 0, 0.25f));
+                shadowPolygon.setHalfWidth(0.11f);
                 wall.getOutlinePolygons().add(shadowPolygon);
 
                 // set properties of all 4
@@ -214,7 +290,7 @@ public class ReallyWeirdTetris extends ApplicationAdapter {
                 return wall;
         }
 
-        private void addBlock(Texture texture, Float... vertices) {
+        private void addPiece(Texture texture, Float... vertices) {
                 // make a moving square with texture and outlines
                 PPPolygon square = new PPPolygon();
 

@@ -212,7 +212,7 @@ public class Util {
                         triangle[4] = t.c.x;
                         triangle[5] = t.c.y;
                         mathPolygon.setVertices(triangle);
-                        //System.out.println("A" + mathPolygon.area());
+
                         if (Math.abs(mathPolygon.area()) < 0.005) {
                                 return false;
                         }

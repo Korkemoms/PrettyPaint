@@ -42,6 +42,4 @@ public abstract class PrettyPolygonDef {
         public float opacity = 1;
         public boolean visible = true;
 
-
-
 }
