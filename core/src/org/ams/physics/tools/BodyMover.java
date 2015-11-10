@@ -24,38 +24,44 @@
  *
  */
 
-package org.ams.paintandphysics.things;
+package org.ams.physics.tools;
 
-import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.InputAdapter;
+import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.math.Vector2;
+import org.ams.core.CoordinateHelper;
+import org.ams.core.Util;
 import org.ams.physics.things.Thing;
-import org.ams.prettypaint.OutlinePolygon;
-import org.ams.prettypaint.PrettyPolygonBatch;
-import org.ams.prettypaint.TexturePolygon;
-import org.ams.prettypaint.def.TexturePolygonDef;
+import org.ams.physics.world.BoxWorld;
+import org.ams.physics.world.WorldUtil;
+
 
 /**
- * Created by Andreas on 07.11.2015.
+ * Created by Andreas on 09.11.2015.
  */
-public interface PPThing {
+public class BodyMover extends InputAdapter {
+        private OrthographicCamera camera;
+        private BoxWorld world;
 
-        TexturePolygon getTexturePolygon();
 
-        Thing getPhysicsThing();
+        public BodyMover(BoxWorld world, OrthographicCamera camera) {
+                this.world = world;
+                this.camera = camera;
+        }
 
-        Array<OutlinePolygon> getOutlinePolygons();
+        @Override
+        public boolean touchDown(int screenX, int screenY, int pointer, int button) {
 
-        PPThing setPhysicsThing(Thing thing);
+                Vector2 worldCoordinates = CoordinateHelper.getWorldCoordinates(camera, screenX, screenY);
 
-        PPThing setTexturePolygon(TexturePolygon texturePolygon);
+                Thing closestThing = WorldUtil.getClosestThingIntersectingCircle(
+                        world.things,
+                        worldCoordinates.x,
+                        worldCoordinates.y,
+                        Util.getTouchRadius(camera.zoom),
+                        Thing.class);
 
-        PPThing draw(PrettyPolygonBatch batch);
 
-        PPThing setAngle(float radians);
-
-        PPThing setScale(float scale);
-
-        PPThing setOpacity(float opacity);
-
-        PPThing setVisible(boolean visible);
-
+                return closestThing != null;
+        }
 }

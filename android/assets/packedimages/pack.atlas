@@ -1,0 +1,27 @@
+
+pack.png
+size: 1024,1024
+format: RGBA8888
+filter: Linear,Linear
+repeat: none
+congruent_outline
+  rotate: false
+  xy: 504, 604
+  size: 300, 300
+  orig: 300, 300
+  offset: 0, 0
+  index: -1
+contemporary_china
+  rotate: false
+  xy: 1, 1
+  size: 400, 400
+  orig: 400, 400
+  offset: 0, 0
+  index: -1
+skulls
+  rotate: false
+  xy: 1, 404
+  size: 500, 500
+  orig: 500, 500
+  offset: 0, 0
+  index: -1

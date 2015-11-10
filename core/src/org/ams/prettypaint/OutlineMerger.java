@@ -34,16 +34,27 @@ import org.ams.core.clipper.*;
 import org.ams.core.Util;
 
 
-// TODO Comment
+/**
+ * This class is made for merging {@link OutlinePolygon}'s so that when they overlap
+ * they look like one.
+ * <p/>
+ * Does not work properly when the outline polygons are scaled({@link OutlinePolygon#setScale(float)}).
+ * <p/>
+ * This class use Clipper to do stuff.
+ * http://www.angusj.com/delphi/clipper.php
+ * http://www.lighti.de/projects/polygon-clipper-for-java/
+ */
 public class OutlineMerger {
 
+        /** Contains interesting vertices for debugging. */
         private Array<Array<Vector2>> debug = new Array<Array<Vector2>>();
 
+        /** For debugging. */
         private DebugRenderer debugRenderer;
 
+        /** For debugging. */
         private boolean verbose = false;
 
-        // TODO Comment
         public OutlineMerger() {
                 debugRenderer = new DebugRenderer(null) {
                         @Override
@@ -53,15 +64,25 @@ public class OutlineMerger {
                 };
         }
 
+        /**
+         * For debugging.
+         *
+         * @param verbose whether to talk a lot on System.out.
+         */
         public void setVerbose(boolean verbose) {
                 this.verbose = verbose;
         }
 
+        /**
+         * For debugging.
+         *
+         * @return whether i talk a lot on System.out.
+         */
         public boolean isVerbose() {
                 return verbose;
         }
 
-        // TODO Comment
+        /** For debugging. */
         public OutlineMerger setDrawDebugInfo(PrettyPolygonBatch batch, boolean debugDraw) {
                 if (debugDraw) {
                         if (!batch.debugRendererArray.contains(debugRenderer, true))
@@ -73,17 +94,17 @@ public class OutlineMerger {
                 return this;
         }
 
-        // TODO Comment
+        /** For debugging. */
         public boolean isDrawingDebugInfo(PrettyPolygonBatch batch) {
                 return batch.debugRendererArray.contains(debugRenderer, true);
         }
 
-        // TODO Comment
-        public void clearDebugLines() {
+        /** For debugging. */
+        public void clearDebugVertices() {
                 debug.clear();
         }
 
-        // TODO Comment
+        /** For debugging. */
         private void debugDraw(ShapeRenderer shapeRenderer) {
                 Vector2 tmp = new Vector2();
                 Vector2 tmp1 = new Vector2();
@@ -117,12 +138,36 @@ public class OutlineMerger {
                 }
         }
 
-        // TODO Comment
+        /**
+         * Merge {@link OutlinePolygon}'s so that when they overlap they look like one.
+         * <p/>
+         * Does not work properly when the outline polygons are scaled({@link OutlinePolygon#setScale(float)}).
+         *
+         * @param toMerge polygons to merge.
+         */
+        public void mergeOutlines(OutlinePolygon... toMerge) {
+                Array<OutlinePolygon> inArray = new Array<OutlinePolygon>();
+                for (OutlinePolygon p : toMerge) {
+                        inArray.add(p);
+                }
+                mergeOutlines(inArray);
+        }
+
+        /**
+         * Merge {@link OutlinePolygon}'s so that when they overlap they look like one.
+         * <p/>
+         * Does not work properly when the outline polygons are scaled({@link OutlinePolygon#setScale(float)}).
+         *
+         * @param toMerge polygons to merge.
+         */
         public void mergeOutlines(Array<OutlinePolygon> toMerge) {
+
                 if (toMerge.size == 0) return;
                 long begin = System.currentTimeMillis();
                 if (verbose) System.out.println("Auto outlining " + toMerge.size + " things");
 
+
+                // merge all overlapping into new polygons
 
                 Array<Point.LongPoint> previousPoints = new Array<Point.LongPoint>();
 
@@ -130,10 +175,12 @@ public class OutlineMerger {
 
                 for (int i = 0; i < toMerge.size; i++) {
                         OutlinePolygon or = toMerge.get(i);
+
                         or.myParents.clear();
 
                         Path path = Util.convertToPath(or.getVerticesRotatedAndTranslated());
 
+                        // if vertices are really close they are set to be equal
                         alignReallyCloseVertices(previousPoints, path, 20d);
 
                         defaultClipper.addPath(path, i == 0 ? Clipper.PolyType.CLIP : Clipper.PolyType.SUBJECT, true);
@@ -146,9 +193,14 @@ public class OutlineMerger {
                 Paths simplified = DefaultClipper.simplifyPolygons(unions1, Clipper.PolyFillType.NON_ZERO);
                 Paths simplifiedAndCleaned = simplified.cleanPolygons(20d);
 
-                if (verbose) System.out.println("Auto outlining resulted in " + simplifiedAndCleaned.size() + " patches.");
+                if (verbose)
+                        System.out.println("Auto outlining resulted in " + simplifiedAndCleaned.size() + " patches.");
+
+                // clipper has now done all the hard work
 
                 for (Path path : simplifiedAndCleaned) {
+
+                        // group together all the ones in this polygon(path)
 
                         Array<Vector2> vertices = Util.convertToVectors(path);
 
@@ -163,10 +215,13 @@ public class OutlineMerger {
                                 }
                         }
 
+
                         // only one in this union, no need to add a parent
                         if (thingsInThisArea.size <= 1) continue;
 
                         debug.add(vertices);
+
+                        // one parent will now do all the drawing of this polygon
 
                         OutlinePolygon outlineParent = new OutlinePolygon();
                         outlineParent.setVertices(vertices);
@@ -178,7 +233,7 @@ public class OutlineMerger {
                         outlineParent.setDrawInside(first.isInsideDrawn());
                         outlineParent.setClosedPolygon(first.isClosedPolygon());
                         outlineParent.setHalfWidth(first.getHalfWidth());
-                        outlineParent.setScale(first.getScale());
+                        outlineParent.setScale(first.getScale()); // should be 1 otherwise weird things happen
                         outlineParent.setWeight(first.getWeight());
 
                         // link parent and children
@@ -194,11 +249,15 @@ public class OutlineMerger {
                 }
         }
 
-        private void alignReallyCloseVertices(Array<Point.LongPoint> vertices, Path path, double radius) {
+        /**
+         * When a vertex in path is really close to a vertex in previousPoints it is set to be the same as that point.
+         * All the ones that have found a really close one are then also added to the previousPoints.
+         */
+        private void alignReallyCloseVertices(Array<Point.LongPoint> previousPoints, Path path, double radius) {
                 for (Point.LongPoint testPoint : path) {
                         long testX = testPoint.getX();
                         long testY = testPoint.getY();
-                        for (Point.LongPoint previousPoint : vertices) {
+                        for (Point.LongPoint previousPoint : previousPoints) {
                                 if (testPoint.equals(previousPoint)) continue;
 
                                 long preX = previousPoint.getX();
@@ -217,9 +276,8 @@ public class OutlineMerger {
                 }
 
                 for (Point.LongPoint newPoint : path) {
-                        vertices.add(newPoint);
+                        previousPoints.add(newPoint);
                 }
 
         }
-
 }

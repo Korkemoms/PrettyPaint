@@ -41,6 +41,7 @@ public class TextureAligner {
 
         /**
          * Align the given textures so that they can seamlessly overlap.
+         *
          * @param polygonTextures      the textures to align.
          * @param textureAlwaysUpright whether to set the textures upright when calling {@link #alignTextures(Array)}.
          *                             If you set this value false the textures may not look aligned because they can have different angles.
@@ -59,13 +60,14 @@ public class TextureAligner {
 
         /**
          * Align the given textures so that they can seamlessly overlap.
+         *
          * @param polygonTextures the textures to align.
          * @param textureAngleRad the angle to rotate the textures before aligning them.
          */
         public void alignTextures(Array<TexturePolygon> polygonTextures, float textureAngleRad) {
                 for (TexturePolygon texturePolygon : polygonTextures) {
 
-                        texturePolygon.setTextureAngle(textureAngleRad);
+                        texturePolygon.setTextureAngle( textureAngleRad-texturePolygon.getAngle());
 
                         texturePolygon.alignTexture(extraTranslation);
                 }

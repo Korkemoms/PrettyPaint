@@ -28,34 +28,28 @@ package org.ams.testapps.paintandphysics;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.InputMultiplexer;
-import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.BodyDef;
 import com.badlogic.gdx.utils.Array;
 import org.ams.core.CameraNavigator;
 import org.ams.core.Util;
-import org.ams.paintandphysics.things.PPCircle;
 import org.ams.paintandphysics.things.PPPolygon;
 import org.ams.paintandphysics.world.PPWorld;
-import org.ams.physics.things.Circle;
 import org.ams.physics.things.Polygon;
-import org.ams.physics.things.def.CircleDef;
 import org.ams.physics.things.def.PolygonDef;
 import org.ams.physics.tools.BodyMover;
-import org.ams.prettypaint.OutlinePolygon;
-import org.ams.prettypaint.PrettyPolygonBatch;
-import org.ams.prettypaint.TexturePolygon;
+import org.ams.prettypaint.*;
 
 /**
  * This is a demo showing how to use PrettyPaint to draw a pretty polygon.
  */
-public class FallingBoxes extends ApplicationAdapter {
+public class ReallyWeirdTetris extends ApplicationAdapter {
 
         // It is best to use a OrthographicCamera with PrettyPaint
         OrthographicCamera camera;
@@ -68,7 +62,33 @@ public class FallingBoxes extends ApplicationAdapter {
 
         float accumulator;
 
+        float dim = 0.5f;
+
+        Float[] longBlock = new Float[]{
+                0f, 0f,
+                dim, 0f,
+                dim, dim * 4f,
+                0f, dim * 4f
+        };
+
+        Float[] wallVertices = new Float[]{
+                -4f, 0.5f,
+                -4f, -0.5f,
+                4f, -0.5f,
+                4f, 0.5f
+        };
+
+
+        Array<Float[]> blocks = new Array<Float[]>();
+
         Texture texture;
+
+        PPPolygon ground;
+
+
+        PPPolygon rightWall;
+
+        PPPolygon leftWall;
 
 
         @Override
@@ -98,10 +118,30 @@ public class FallingBoxes extends ApplicationAdapter {
 
                 Gdx.input.setInputProcessor(inputMultiplexer);
 
-                texture = new Texture("skulls.png");
+                texture = new Texture("mainme2.png");
                 texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
 
-                addGround(texture);
+
+                ground = addWall(texture, wallVertices);
+                ground.setPosition(4, 1.5f);
+                ground.setAngle(MathUtils.PI*0.5f);
+
+
+                rightWall = addWall(texture, wallVertices);
+                rightWall.setPosition(2.3f, 1);
+
+                leftWall = addWall(texture, wallVertices);
+                leftWall.setAngle(MathUtils.PI * 0.5f);
+                leftWall.setPosition(-4, 0);
+
+
+                Array<OutlinePolygon> toMerge = new Array<OutlinePolygon>();
+                toMerge.addAll(ground.getOutlinePolygons());
+                toMerge.addAll(rightWall.getOutlinePolygons());
+                //toMerge.addAll(leftWall.getOutlinePolygons());
+
+                //new OutlineMerger().mergeOutlines(toMerge);
+
 
         }
 
@@ -117,57 +157,64 @@ public class FallingBoxes extends ApplicationAdapter {
 
                 accumulator += delta;
 
-                if (accumulator > 1) {
+                if ( accumulator > 1) {
                         accumulator -= 1;
-                        addSquare(texture);
+                       // addBlock(texture, longBlock);
+
+
+
+                        Array<TexturePolygon> toAlign = new Array<TexturePolygon>();
+                        toAlign.add(ground.getTexturePolygon());
+                        toAlign.add(rightWall.getTexturePolygon());
+
+                        new TextureAligner().alignTextures(toAlign, true);
                 }
 
                 polygonBatch.end();
 
         }
 
-        private void addGround(Texture texture) {
-                PPPolygon ground = new PPPolygon();
+        private PPPolygon addWall(Texture texture, Float... vertices) {
+                PPPolygon wall = new PPPolygon();
 
                 // add box2d polygon
                 PolygonDef def = new PolygonDef();
                 def.type = BodyDef.BodyType.StaticBody;
-                ground.setPhysicsThing(new Polygon(def));
+                wall.setPhysicsThing(new Polygon(def));
 
                 // add texture
                 TexturePolygon texturePolygon = new TexturePolygon();
                 texturePolygon.setTextureRegion(new TextureRegion(texture));
-                ground.setTexturePolygon(texturePolygon);
+                wall.setTexturePolygon(texturePolygon);
 
                 // add outline
                 OutlinePolygon outlinePolygon = new OutlinePolygon();
-                ground.getOutlinePolygons().add(outlinePolygon);
+                wall.getOutlinePolygons().add(outlinePolygon);
 
                 // add shadow
                 OutlinePolygon shadowPolygon = new OutlinePolygon();
                 shadowPolygon.setColor(new Color(0, 0, 0, 0.35f));
                 shadowPolygon.setHalfWidth(0.2f);
                 shadowPolygon.setDrawInside(false);
-                ground.getOutlinePolygons().add(shadowPolygon);
+                wall.getOutlinePolygons().add(shadowPolygon);
 
                 // set properties of all 4
-                float hw = 12f;
-                float hh = 3f;
 
-                Array<Vector2> vertices = new Array<Vector2>();
-                vertices.add(new Vector2(-hw, -hh));
-                vertices.add(new Vector2(hw, -hh));
-                vertices.add(new Vector2(hw, hh));
-                vertices.add(new Vector2(-hw, hh));
+                Array<Vector2> converted = new Array<Vector2>();
+                for (int i = 0; i < vertices.length - 1; i += 2) {
+                        converted.add(new Vector2(vertices[i], vertices[i + 1]));
+                }
+                Util.translateSoCentroidIsAtOrigin(converted);
 
-                ground.setVertices(vertices);
+                wall.setVertices(converted);
 
-                world.addThing(ground);
+                world.addThing(wall);
 
-                ground.setPosition(0, -4f);
+                wall.setPosition(0, 0);
+                return wall;
         }
 
-        private void addSquare(Texture texture) {
+        private void addBlock(Texture texture, Float... vertices) {
                 // make a moving square with texture and outlines
                 PPPolygon square = new PPPolygon();
 
@@ -188,13 +235,14 @@ public class FallingBoxes extends ApplicationAdapter {
                 float hw = 0.25f;
                 float hh = 0.25f;
 
-                Array<Vector2> vertices = new Array<Vector2>();
-                vertices.add(new Vector2(-hw, -hh));
-                vertices.add(new Vector2(hw, -hh));
-                vertices.add(new Vector2(hw, hh));
-                vertices.add(new Vector2(-hw, hh));
+                Array<Vector2> converted = new Array<Vector2>();
+                for (int i = 0; i < vertices.length - 1; i += 2) {
+                        converted.add(new Vector2(vertices[i], vertices[i + 1]));
+                }
+                Util.translateSoCentroidIsAtOrigin(converted);
 
-                square.setVertices(vertices);
+
+                square.setVertices(converted);
                 square.setPosition(0, 10);
 
                 world.addThing(square);

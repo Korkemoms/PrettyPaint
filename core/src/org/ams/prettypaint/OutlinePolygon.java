@@ -209,7 +209,6 @@ public class OutlinePolygon implements PrettyPolygon {
         }
 
         public Rectangle getBoundingRectangle() {
-
                 Rectangle rectangle = new Rectangle();
                 boolean initialized = false;
 
@@ -223,6 +222,7 @@ public class OutlinePolygon implements PrettyPolygon {
                                 initialized = true;
                         } else rectangle.merge(cullingArea);
                 }
+
                 return rectangle;
 
         }
@@ -886,6 +886,7 @@ public class OutlinePolygon implements PrettyPolygon {
                 }
                 return verticesRotatedAndTranslated;
         }
+
 
         @Override
         public Array<Vector2> getVertices() {
