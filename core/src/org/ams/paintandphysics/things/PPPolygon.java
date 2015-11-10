@@ -83,14 +83,6 @@ public class PPPolygon implements PPWithBody {
                 return this;
         }
 
-        @Override
-        public PPPolygon saveAsPng(PrettyPolygonBatch batch, String fileName, float scale) {
-                basic.saveAsPng(batch, fileName, scale);
-                return this;
-        }
-
-
-
         /**
          * Set the position of all the polygons.
          *

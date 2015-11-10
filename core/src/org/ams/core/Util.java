@@ -119,6 +119,11 @@ public class Util {
                 return converted;
         }
 
+        public static float getTouchRadius(float zoom) {
+                float f = 0.5f * zoom;
+                return (f < 0.05f ? 0.05f : f) * 0.4f;
+        }
+
         public static Array<Triangle> makeTriangles(Array<Vector2> polygon, Array<Array<Vector2>> holes) {
 
                 Array<Triangle> triangles = new Array<Triangle>();

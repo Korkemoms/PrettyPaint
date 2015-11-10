@@ -239,6 +239,25 @@ public class TexturePolygon implements PrettyPolygon {
 
         }
 
+        public Rectangle getBoundingRectangle() {
+                Rectangle boundingRectangle = new Rectangle();
+                boolean initialized = false;
+
+                float scale = this.textureScale * this.scale;
+
+                for (PolygonRegion pr : polygonRegions) {
+                        Rectangle cullingArea = getCullingArea(tmpRectangle, pr, angleRad + textureAngle, position, scale);
+
+                        if (!initialized) {
+                                initialized = true;
+
+                                boundingRectangle.set(cullingArea);
+                        } else
+                                boundingRectangle.merge(cullingArea);
+                }
+                return boundingRectangle;
+        }
+
 
         /**
          * Draws the culling rectangles of the triangles.
@@ -252,11 +271,11 @@ public class TexturePolygon implements PrettyPolygon {
                 float scale = this.textureScale * this.scale;
 
                 for (PolygonRegion pr : polygonRegions) {
-                        Rectangle cullingArea = this.tmpRectangle;
-                        getCullingArea(cullingArea, pr, angleRad + textureAngle, position, scale);
+                        Rectangle cullingArea = getCullingArea(tmpRectangle, pr, angleRad + textureAngle, position, scale);
                         shapeRenderer.rect(cullingArea.x, cullingArea.y, cullingArea.width, cullingArea.height);
                 }
         }
+
 
         /**
          * Draw texture on the polygon defined by {@link #setVertices(Array)}.
@@ -293,8 +312,7 @@ public class TexturePolygon implements PrettyPolygon {
 
                 for (int i = 0; i < polygonRegions.size; i++) {
                         PolygonRegion pr = polygonRegions.items[i];
-                        Rectangle cullingArea = this.tmpRectangle;
-                        getCullingArea(cullingArea, pr, angleRad + textureAngle, position, scale);
+                        Rectangle cullingArea = getCullingArea(tmpRectangle, pr, angleRad + textureAngle, position, scale);
 
 
                         if (frustum.overlaps(cullingArea)) {
@@ -322,7 +340,7 @@ public class TexturePolygon implements PrettyPolygon {
         /**
          * Do not modify. If you want to change, translate, rotate or scale the polygon use
          * {@link #setVertices(Array)}, {@link #setPosition(Vector2)}, {@link #setAngle(float)} or {@link #setScale(float)} respectively.
-         * <p>
+         * <p/>
          * These vertices are not affected by scale.
          *
          * @return the vertices set by {@link #setVertices(Array)}. Do not modify.
@@ -334,10 +352,10 @@ public class TexturePolygon implements PrettyPolygon {
 
         /**
          * Set the vertices of the polygon. The polygon can be self intersecting.
-         * <p>
+         * <p/>
          * It is recommended that the centroid of these vertices is (0,0).
-         * <p>
-         * <p>
+         * <p/>
+         * <p/>
          * Given array is copied.
          *
          * @param vertices Vertices defining the polygon.
@@ -398,8 +416,8 @@ public class TexturePolygon implements PrettyPolygon {
          * The given region should be square, otherwise it will not look seamless. I hope to fix
          * this soon.
          * The texture region should contain a seamless texture.
-         * <p>
-         * Use a {@link com.badlogic.gdx.graphics.g2d.TextureAtlas} to manage your texture regions.
+         * <p/>
+         * Use a {@link TextureAtlas} to manage your texture regions.
          *
          * @param textureRegion the region you wish to draw on the polygon defined by {@link #setVertices(Array)}.
          * @return this for chaining.
@@ -444,7 +462,7 @@ public class TexturePolygon implements PrettyPolygon {
 
         /**
          * Source translation allows you move the texture around within the polygon.
-         * <p>
+         * <p/>
          * Do not modify. If you wish to change SourceTranslation use one of these methods:
          * -{@link #setTextureTranslation(float, float)}
          * -{@link #setTextureTranslation(Vector2)}
@@ -481,13 +499,26 @@ public class TexturePolygon implements PrettyPolygon {
                 this.textureTranslation.set(x, y);
 
                 actualTextureTranslation.set(x, y);
-                actualTextureTranslation.scl(scale);
+                actualTextureTranslation.scl(1f / this.scale);
+
 
                 actualTextureTranslation.x *= Util.getTextureAlignmentConstantX(textureRegion);
                 actualTextureTranslation.y *= Util.getTextureAlignmentConstantY(textureRegion);
 
+
+                actualTextureTranslation.x *= 500f / (float) (textureRegion.getRegionWidth());
+                actualTextureTranslation.y *= 500f / (float) (textureRegion.getRegionWidth());
+
                 actualTextureTranslation.x %= Util.getMaximumTranslationX(textureRegion);
                 actualTextureTranslation.y %= Util.getMaximumTranslationY(textureRegion);
+
+                while (actualTextureTranslation.y < 0) {
+                        actualTextureTranslation.y += Util.getMaximumTranslationY(textureRegion);
+                }
+                while (actualTextureTranslation.x < 0) {
+                        actualTextureTranslation.x += Util.getMaximumTranslationX(textureRegion);
+                }
+
 
                 return this;
         }
@@ -516,7 +547,7 @@ public class TexturePolygon implements PrettyPolygon {
          */
         public TexturePolygon alignTexture(float extraTranslationX, float extraTranslationY) {
                 Vector2 v = new Vector2(position);
-                v.rotateRad(-angleRad - textureAngle);
+                v.rotateRad(-textureAngle - angleRad);
 
                 v.add(extraTranslationX, extraTranslationY);
 
@@ -549,7 +580,7 @@ public class TexturePolygon implements PrettyPolygon {
         }
 
         /** Computes the culling area of the polygon after scaling, rotating and translating. */
-        private void getCullingArea(Rectangle cullingArea, PolygonRegion pr, float rotation, Vector2 translation, float scale) {
+        private Rectangle getCullingArea(Rectangle cullingArea, PolygonRegion pr, float rotation, Vector2 translation, float scale) {
 
                 float[] vertices = pr.getVertices();
 
@@ -571,6 +602,8 @@ public class TexturePolygon implements PrettyPolygon {
                 tmpVector.rotateRad(rotation);
                 tmpVector.add(translation);
                 cullingArea.merge(tmpVector);
+
+                return cullingArea;
 
 
         }

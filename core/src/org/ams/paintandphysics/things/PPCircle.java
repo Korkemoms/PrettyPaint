@@ -128,12 +128,6 @@ public class PPCircle implements PPWithBody {
                 return this;
         }
 
-        @Override
-        public PPCircle saveAsPng(PrettyPolygonBatch batch, String fileName, float scale) {
-                basic.saveAsPng(batch, fileName, scale);
-                return this;
-        }
-
         /**
          * Set the position of all the polygons.
          *

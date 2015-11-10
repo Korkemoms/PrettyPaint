@@ -23,7 +23,7 @@
  *  THE SOFTWARE.
  *
  */
-package org.ams.testapps.paintandphysics;
+package org.ams.testapps.prettypaint;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
@@ -36,6 +36,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.BodyDef;
 import com.badlogic.gdx.utils.Array;
+import org.ams.core.Util;
 import org.ams.paintandphysics.things.PPCircle;
 import org.ams.paintandphysics.things.PPPolygon;
 import org.ams.paintandphysics.world.PPWorld;
@@ -45,10 +46,11 @@ import org.ams.physics.things.def.CircleDef;
 import org.ams.physics.things.def.PolygonDef;
 import org.ams.prettypaint.OutlinePolygon;
 import org.ams.prettypaint.PrettyPolygonBatch;
+import org.ams.prettypaint.SaveAsPng;
 import org.ams.prettypaint.TexturePolygon;
 
 /**
- * This is a demo showing how to use PrettyPaint to draw a pretty polygon.
+ * This is a test for the {@link SaveAsPng} class.
  */
 public class SaveThingAsPng extends ApplicationAdapter implements InputProcessor {
 
@@ -66,6 +68,7 @@ public class SaveThingAsPng extends ApplicationAdapter implements InputProcessor
 
         PPPolygon square;
         PPCircle circle;
+        PPPolygon polygon;
 
 
         @Override
@@ -93,6 +96,8 @@ public class SaveThingAsPng extends ApplicationAdapter implements InputProcessor
 
                 square = addSquare(texture);
                 circle = addCircle(texture);
+                polygon = addPolygon(texture);
+
 
         }
 
@@ -159,6 +164,44 @@ public class SaveThingAsPng extends ApplicationAdapter implements InputProcessor
                 return square;
         }
 
+        private PPPolygon addPolygon(Texture texture) {
+                // make a moving square with texture and outlines
+                PPPolygon square = new PPPolygon();
+
+                // add box2d polygon
+                PolygonDef def = new PolygonDef();
+                def.type = BodyDef.BodyType.StaticBody;
+                square.setPhysicsThing(new Polygon(def));
+
+                // add texture
+                TexturePolygon texturePolygon = new TexturePolygon();
+                texturePolygon.setTextureRegion(new TextureRegion(texture));
+                square.setTexturePolygon(texturePolygon);
+
+                // add outline
+                OutlinePolygon outlinePolygon = new OutlinePolygon();
+                square.getOutlinePolygons().add(outlinePolygon);
+
+                // set properties of all 3
+
+
+                Array<Vector2> vertices = new Array<Vector2>();
+                vertices.add(new Vector2(0, 0));
+                vertices.add(new Vector2(1, 0));
+                vertices.add(new Vector2(1, 0.5f));
+                vertices.add(new Vector2(1.5f, 1.5f));
+                vertices.add(new Vector2(0.5f, 1));
+
+                Util.translateSoCentroidIsAtOrigin(vertices);
+
+
+                square.setVertices(vertices);
+                square.setPosition(0, 0);
+
+                world.addThing(square);
+                return square;
+        }
+
         int i = 0;
 
         @Override
@@ -176,13 +219,13 @@ public class SaveThingAsPng extends ApplicationAdapter implements InputProcessor
 
                 polygonBatch.end();
 
-                if (i++ ==4) {
-                        square.saveAsPng(polygonBatch, "test.png", 1f);
-                        circle.saveAsPng(polygonBatch, "test.png", 1f);
+                if (i++ == 4) {
+                        SaveAsPng.saveAsPng(square.getTexturePolygon(), square.getOutlinePolygons(), polygonBatch, "square", 1f);
+                        SaveAsPng.saveAsPng(circle.getTexturePolygon(), circle.getOutlinePolygons(), polygonBatch, "circle", 1f);
+                        SaveAsPng.saveAsPng(polygon.getTexturePolygon(), polygon.getOutlinePolygons(), polygonBatch, "polygon", 1f);
+
 
                 }
-
-
         }
 
 

@@ -35,12 +35,8 @@ import com.badlogic.gdx.math.Vector2;
  */
 public class CoordinateHelper {
 
-        /**
-         * @param screenX pixel.
-         * @param screenY pixel.
-         * @return position of touch in "world units", with center of screen as origin.
-         */
-        public Vector2 getCameraCoordinates(OrthographicCamera camera, int screenX, int screenY) {
+
+        public static Vector2 getWorldCoordinates(OrthographicCamera camera, int screenX, int screenY) {
 
                 float halfWidth = Gdx.graphics.getWidth() * 0.5f;
                 float halfHeight = Gdx.graphics.getHeight() * 0.5f;
@@ -53,8 +49,9 @@ public class CoordinateHelper {
                 // convert to world units relative to center of screen
                 pos.scl(camera.viewportWidth * 0.5f, camera.viewportHeight * 0.5f);
 
-                return pos;
+                return pos.add(camera.position.x, camera.position.y);
         }
+
 
         public static Vector2 getScreenCoordinates(OrthographicCamera camera, float cameraX, float cameraY, Vector2 result) {
                 return getScreenCoordinates(camera, cameraX, cameraY, camera.zoom, result);
