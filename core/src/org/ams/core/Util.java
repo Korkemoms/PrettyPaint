@@ -424,23 +424,6 @@ public class Util {
                 return regHeight / texHeight;
         }
 
-        public static float getTextureAlignmentConstantX(TextureRegion region) {
-                float regWidth = region.getRegionWidth();
-                float texWidth = region.getTexture().getWidth();
-                return regWidth * 0.2f / texWidth;
-        }
-
-        public static float getTextureAlignmentConstantY(TextureRegion region) {
-                float regHeight = region.getRegionHeight();
-                float texHeight = region.getTexture().getHeight();
-                return -regHeight * 0.2f / texHeight;
-        }
-
-        public static Vector2 getTextureAlignmentConstants(TextureRegion region, Vector2 result) {
-                return result.set(getTextureAlignmentConstantX(region),
-                        getTextureAlignmentConstantY(region));
-        }
-
         /**
          * Find out if a point is inside a polygon. credit:
          * http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html

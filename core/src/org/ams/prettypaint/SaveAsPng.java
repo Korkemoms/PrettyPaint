@@ -27,7 +27,6 @@
 package org.ams.prettypaint;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Pixmap;
@@ -55,7 +54,7 @@ public class SaveAsPng {
          * @param quality         higher means larger resolution.
          */
         public static void saveAsPng(TexturePolygon texturePolygon, Array<OutlinePolygon> outlinePolygons, PrettyPolygonBatch batch, String fileName, float quality) {
-
+                /*
 
                 OrthographicCamera camera = new OrthographicCamera();
 
@@ -130,6 +129,7 @@ public class SaveAsPng {
                 } while (fh.exists());
 
                 PixmapIO.writePNG(fh, one);
+                */
 
         }
 
@@ -158,7 +158,7 @@ public class SaveAsPng {
         }
 
         public static Pixmap getScreenshot(int x, int y, int w, int h, boolean yDown) {
-
+                /*
                 Gdx.gl.glPixelStorei(GL20.GL_PACK_ALIGNMENT, 1);
 
                 final Pixmap pixmap = new Pixmap(w, h, Pixmap.Format.RGBA8888);
@@ -179,6 +179,7 @@ public class SaveAsPng {
                         pixels.clear();
                 }
 
-                return pixmap;
+                return pixmap;*/
+                return null;
         }
 }

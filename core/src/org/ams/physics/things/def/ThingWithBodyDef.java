@@ -46,8 +46,8 @@ public abstract class ThingWithBodyDef extends ThingDef {
 
         public int antiCollisionGroup = 0;
         public short groupIndex = 1;
-        public short maskBits;
-        public short categoryBits;
+        public short maskBits = 3;
+        public short categoryBits = 3;
 
         public float angularDamping = 0.1f;
         public float linearDamping = 0.1f;

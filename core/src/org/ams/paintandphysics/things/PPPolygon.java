@@ -83,6 +83,17 @@ public class PPPolygon implements PPWithBody {
                 return this;
         }
 
+        @Override
+        public PPPolygon setUserData(Object userData) {
+                basic.userData = userData;
+                return this;
+        }
+
+        @Override
+        public Object getUserData() {
+                return basic.userData;
+        }
+
         /**
          * Set the position of all the polygons.
          *

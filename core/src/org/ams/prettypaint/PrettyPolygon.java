@@ -45,17 +45,17 @@ public interface PrettyPolygon {
         /**
          * Do not modify. If you want to change, translate, rotate or scale the polygon use
          * {@link #setVertices(Array)}, {@link #setPosition(Vector2)}, {@link #setAngle(float)} or {@link #setScale(float)} respectively.
-         * <p>
+         * <p/>
          * These vertices are not affected by scale.
          *
          * @return vertices rotated and translated. Do not modify.
          */
-        Array<Vector2> getVerticesRotatedAndTranslated();
+        Array<Vector2> getVerticesRotatedScaledAndTranslated(float rotation, float scale, float transX, float transY);
 
         /**
          * Do not modify. If you want to change, translate, rotate or scale the polygon use
          * {@link #setVertices(Array)}, {@link #setPosition(Vector2)}, {@link #setAngle(float)} or {@link #setScale(float)} respectively.
-         * <p>
+         * <p/>
          * These vertices are not affected by scale.
          *
          * @return the vertices add by {@link #setVertices(Array)}. Do not modify.
@@ -64,9 +64,9 @@ public interface PrettyPolygon {
 
         /**
          * Set the vertices of the polygon. The polygon can be self intersecting.
-         * <p>
+         * <p/>
          * It is recommended that the centroid of these vertices is (0,0).
-         * <p>
+         * <p/>
          * Given array is copied.
          *
          * @param vertices Vertices defining the polygon.
@@ -127,14 +127,12 @@ public interface PrettyPolygon {
         long getTimeOfLastDrawCall();
 
         /**
-         *
          * @param opacity the opacity for this polygon.
          * @return this for chaining.
          */
         PrettyPolygon setOpacity(float opacity);
 
         /**
-         *
          * @return the opacity of this polygon.
          */
         float getOpacity();
@@ -153,4 +151,8 @@ public interface PrettyPolygon {
          * @return whether this polygon is visible.
          */
         boolean isVisible();
+
+        PrettyPolygon setUserData(Object userData);
+
+        Object getUserData();
 }

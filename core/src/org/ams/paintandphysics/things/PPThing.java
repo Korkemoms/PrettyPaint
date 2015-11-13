@@ -58,4 +58,8 @@ public interface PPThing {
 
         PPThing setVisible(boolean visible);
 
+        PPThing setUserData(Object userData);
+
+        Object getUserData();
+
 }

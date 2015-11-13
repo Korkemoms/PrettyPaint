@@ -39,9 +39,9 @@ import org.ams.prettypaint.PrettyPolygonBatch;
 public class PPWorld {
 
         /**
-         * To add a thing you want to use {@link #addThing(PPThing)}.
+         * To add a thing you should use {@link #addThing(PPThing)}.
          */
-        protected Array<PPThing> things = new Array<PPThing>();
+        public Array<PPThing> things = new Array<PPThing>();
 
         public BoxWorld boxWorld;
 
@@ -82,4 +82,21 @@ public class PPWorld {
                 }
                 return this;
         }
+
+        /**
+         * The index is ignored for the
+         *
+         * @param index
+         * @param thing
+         * @return
+         */
+        public PPWorld insertThing(int index, PPThing thing) {
+                things.insert(index, thing);
+                if (thing.getPhysicsThing() != null) {
+                        boxWorld.safelyInsertThing(index, thing.getPhysicsThing());
+                }
+                return this;
+        }
+
+
 }

@@ -55,7 +55,7 @@ public class OutlinePolygon implements PrettyPolygon {
         /** The actual vertices of the polygon. */
         private final Array<Vector2> vertices = new Array<Vector2>(true, 1, Vector2.class);
 
-        /** This array is only updated when {@link #getVerticesRotatedAndTranslated()} is called. */
+        /** This array is only updated when {@link #getVerticesRotatedScaledAndTranslated()} is called. */
         private final Array<Vector2> verticesRotatedAndTranslated = new Array<Vector2>(true, 4, Vector2.class);
 
         /**
@@ -123,6 +123,8 @@ public class OutlinePolygon implements PrettyPolygon {
         private boolean drawLineFromFirstToLast = false;
 
         private boolean changesToStripOrCulling = false;
+
+        private Object userData;
 
         public OutlinePolygon() {
                 this(null);
@@ -225,6 +227,27 @@ public class OutlinePolygon implements PrettyPolygon {
 
                 return rectangle;
 
+        }
+
+        /** Do not modify. These are set by the {@link OutlineMerger}. */
+        public Array<OutlinePolygon> getMyParents() {
+                return myParents;
+        }
+
+        /** Do not modify. These are set by the {@link OutlineMerger}. */
+        public Array<OutlinePolygon> getMyChildren() {
+                return myChildren;
+        }
+
+        @Override
+        public Object getUserData() {
+                return userData;
+        }
+
+        @Override
+        public OutlinePolygon setUserData(Object userData) {
+                this.userData = userData;
+                return this;
         }
 
         @Override
@@ -368,6 +391,8 @@ public class OutlinePolygon implements PrettyPolygon {
                 drawInvocations++;
 
                 if (myChildren.size == 0 || drawInvocations >= myChildren.size) {
+
+                        if (!visible) return this;
 
                         debugRenderer.queueIfEnabled(batch);
 
@@ -876,13 +901,14 @@ public class OutlinePolygon implements PrettyPolygon {
 
 
         @Override
-        public Array<Vector2> getVerticesRotatedAndTranslated() {
+        public Array<Vector2> getVerticesRotatedScaledAndTranslated(float rotation, float scale, float transX, float transY) {
 
                 for (int i = 0; i < vertices.size; i++) {
                         Vector2 w = verticesRotatedAndTranslated.items[i];
                         w.set(vertices.items[i]);
-                        w.rotateRad(angleRad);
-                        w.add(position);
+                        w.rotateRad(rotation);
+                        w.scl(scale);
+                        w.add(transX, transY);
                 }
                 return verticesRotatedAndTranslated;
         }

@@ -46,7 +46,7 @@ public class BoxWorld {
 
 
         private final static int MAX_FPS = 60;
-        private final static int MIN_FPS = 10;
+        private final static int MIN_FPS = 20;
         private final static float TIME_STEP = 1f / MAX_FPS;
         private final static float MAX_STEPS = 1f + MAX_FPS / MIN_FPS;
         private final static float MAX_TIME_PER_FRAME = TIME_STEP * MAX_STEPS;
@@ -173,11 +173,27 @@ public class BoxWorld {
         /**
          * Remember to use {@link #getUnusedID()} to set the id of the thing you add.
          *
-         * @param t thing to add
+         * @param t thing to add.
          */
         public void safelyAddThing(Thing t) {
 
                 things.add(t);
+
+                for (int i = 0; i < thingListeners.size; i++) {
+                        thingListeners.get(i).thingAdded(t);
+                }
+                t.thingHasBeenAddedToBoxWorld(this);
+        }
+
+        /**
+         * Remember to use {@link #getUnusedID()} to set the id of the thing you add.
+         *
+         * @param t     thing to insert.
+         * @param index index to insert thing at.
+         */
+        public void safelyInsertThing(int index, Thing t) {
+
+                things.insert(index, t);
 
                 for (int i = 0; i < thingListeners.size; i++) {
                         thingListeners.get(i).thingAdded(t);
@@ -342,16 +358,19 @@ public class BoxWorld {
                 if (preferredJointAnchor != null) return preferredJointAnchor;
                 for (Thing t : things) {
                         if (t instanceof ThingWithBody) {
-                                if (t.getBody() != null && t.getBody().getType() == BodyDef.BodyType.StaticBody) {
-                                        return (ThingWithBody) t;
-                                }
+                                boolean ok = t.getBody() != null;
+                                ok &= t.getBody().getType() == BodyDef.BodyType.StaticBody;
+                                ok &= t.getBody().isActive();
+
+                                if (ok) return (ThingWithBody) t;
+
                         }
                 }
                 return null;
         }
 
         public void setPreferredJointAnchor(ThingWithBody twb) {
-
+                this.preferredJointAnchor = twb;
         }
 
         public interface ThingListener {

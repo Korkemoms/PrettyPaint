@@ -92,6 +92,8 @@ public class TexturePolygon implements PrettyPolygon {
 
         private boolean setTrianglesLater = false;
 
+        private Object userData;
+
 
         public TexturePolygon() {
                 this(null, null);
@@ -152,6 +154,17 @@ public class TexturePolygon implements PrettyPolygon {
 
 
                 }
+        }
+
+        @Override
+        public Object getUserData() {
+                return userData;
+        }
+
+        @Override
+        public TexturePolygon setUserData(Object userData) {
+                this.userData = userData;
+                return this;
         }
 
         public TexturePolygon setDrawCullingRectangles(boolean drawCullingRectangles) {
@@ -447,9 +460,7 @@ public class TexturePolygon implements PrettyPolygon {
                         polygonRegions.clear();
                         polygonRegions.addAll(newRegions);
 
-                        setTextureTranslation(new Vector2(
-                                (float) Math.random() * MathUtils.random() * Util.getMaximumTranslationX(textureRegion),
-                                (float) Math.random() * MathUtils.random() * Util.getMaximumTranslationY(textureRegion)));
+                        setTextureTranslation(getTextureTranslation());
 
                         if (setTrianglesLater) {
                                 setTrianglesLater = false;
@@ -499,26 +510,32 @@ public class TexturePolygon implements PrettyPolygon {
                 this.textureTranslation.set(x, y);
 
                 actualTextureTranslation.set(x, y);
+
+                actualTextureTranslation.add(
+                        -textureRegion.getRegionX() * textureScale,
+                        textureRegion.getRegionY() * textureScale);
+
+
                 actualTextureTranslation.scl(1f / this.scale);
+                actualTextureTranslation.scl(1f / this.textureScale);
+
+                actualTextureTranslation.x /= textureRegion.getTexture().getWidth();
+                actualTextureTranslation.y /= -textureRegion.getTexture().getHeight();
 
 
-                actualTextureTranslation.x *= Util.getTextureAlignmentConstantX(textureRegion);
-                actualTextureTranslation.y *= Util.getTextureAlignmentConstantY(textureRegion);
+                float maxX = Util.getMaximumTranslationX(textureRegion);
+                float maxY = Util.getMaximumTranslationY(textureRegion);
 
+                actualTextureTranslation.x %= maxX;
+                actualTextureTranslation.y %= maxY;
 
-                actualTextureTranslation.x *= 500f / (float) (textureRegion.getRegionWidth());
-                actualTextureTranslation.y *= 500f / (float) (textureRegion.getRegionWidth());
-
-                actualTextureTranslation.x %= Util.getMaximumTranslationX(textureRegion);
-                actualTextureTranslation.y %= Util.getMaximumTranslationY(textureRegion);
-
-                while (actualTextureTranslation.y < 0) {
-                        actualTextureTranslation.y += Util.getMaximumTranslationY(textureRegion);
-                }
+                // TODO improve
                 while (actualTextureTranslation.x < 0) {
-                        actualTextureTranslation.x += Util.getMaximumTranslationX(textureRegion);
+                        actualTextureTranslation.x += maxX;
                 }
-
+                while (actualTextureTranslation.y < 0) {
+                        actualTextureTranslation.y += maxY;
+                }
 
                 return this;
         }
@@ -751,13 +768,14 @@ public class TexturePolygon implements PrettyPolygon {
         }
 
         @Override
-        public Array<Vector2> getVerticesRotatedAndTranslated() {
+        public Array<Vector2> getVerticesRotatedScaledAndTranslated(float rotation, float scale, float transX, float transY) {
 
                 for (int i = 0; i < vertices.size; i++) {
                         Vector2 w = verticesRotatedAndTranslated.items[i];
                         w.set(vertices.items[i]);
-                        w.rotateRad(angleRad);
-                        w.add(position);
+                        w.rotateRad(rotation);
+                        w.scl(scale);
+                        w.add(transX, transY);
                 }
                 return verticesRotatedAndTranslated;
         }

@@ -50,7 +50,6 @@ public class Polygon extends AbstractThingWithBody implements ThingWithBody {
         private final Vector2 v1 = new Vector2();
 
         private final Rectangle physicsBoundingBox = new Rectangle();
-        private final Array<Vector2> rotatedAndTranslatedVerticesForPhysicsBoundingBox = new Array<Vector2>(true, 10, Vector2.class);
 
 
         public Polygon(PolygonDef def) {
@@ -122,40 +121,18 @@ public class Polygon extends AbstractThingWithBody implements ThingWithBody {
 
         @Override
         public Rectangle getPhysicsBoundingBox() {
-                physicsBoundingBox.x = 1000000;
-                physicsBoundingBox.y = 1000000;
-                physicsBoundingBox.width = -100000f;
-                physicsBoundingBox.height = -1000000f;
 
-                while (rotatedAndTranslatedVerticesForPhysicsBoundingBox.size < verticesRotatedAndTranslated.size) {
-                        rotatedAndTranslatedVerticesForPhysicsBoundingBox.add(new Vector2());
-                }
-
+                boolean initialized = false;
                 for (int i = 0; i < vertices.size; i++) {
 
                         v1.set(vertices.items[i]).rotateRad(body.getAngle()).add(body.getPosition());
-
-                        rotatedAndTranslatedVerticesForPhysicsBoundingBox.items[i].x = v1.x;
-                        rotatedAndTranslatedVerticesForPhysicsBoundingBox.items[i].y = v1.y;
-
-                        // compute culling rectangle
-                        if (v1.x < physicsBoundingBox.x) {
-                                physicsBoundingBox.x = v1.x;
+                        if (!initialized) {
+                                physicsBoundingBox.set(v1.x, v1.y, 0, 0);
+                                initialized = true;
                         }
-                        if (v1.y < physicsBoundingBox.y) {
-                                physicsBoundingBox.y = v1.y;
-                        }
-
-                        if (v1.x > physicsBoundingBox.width) {
-                                physicsBoundingBox.width = v1.x;
-                        }
-                        if (v1.y > physicsBoundingBox.height) {
-                                physicsBoundingBox.height = v1.y;
-                        }
+                        else physicsBoundingBox.merge(v1);
                 }
 
-                physicsBoundingBox.width -= physicsBoundingBox.x;
-                physicsBoundingBox.height -= physicsBoundingBox.y;
 
                 return physicsBoundingBox;
         }
@@ -169,6 +146,10 @@ public class Polygon extends AbstractThingWithBody implements ThingWithBody {
         public void setVertices(Array<Vector2> vertices) {
                 this.vertices.clear();
                 this.vertices.addAll(vertices);
+
+                this.verticesRotatedAndTranslated.clear();
+                this.verticesRotatedAndTranslated.addAll(vertices);
+
                 if (boxWorld != null) updateFixtures();
         }
 

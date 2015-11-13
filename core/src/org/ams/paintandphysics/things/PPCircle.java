@@ -141,6 +141,17 @@ public class PPCircle implements PPWithBody {
                 return this;
         }
 
+        @Override
+        public PPCircle setUserData(Object userData) {
+                basic.userData = userData;
+                return this;
+        }
+
+        @Override
+        public Object getUserData() {
+                return basic.userData;
+        }
+
         /**
          * Set the position of the painting polygons and the physics thing if it has a body.
          *

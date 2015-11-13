@@ -128,7 +128,7 @@ public class TextureAlignmentTest extends ApplicationAdapter {
                 Gdx.gl20.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
                 float delta = Gdx.graphics.getDeltaTime();
-                accumulator += delta * 0.4f;
+                accumulator += delta;
 
                 // swap region sometimes
                 if (accumulator >= timeBetweenTextureChange) {

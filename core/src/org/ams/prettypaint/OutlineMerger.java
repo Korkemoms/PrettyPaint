@@ -56,6 +56,9 @@ public class OutlineMerger {
         /** For debugging. */
         private boolean verbose = false;
 
+        private float scale = 1f;
+
+
         public OutlineMerger() {
                 debugRenderer = new DebugRenderer(null) {
                         @Override
@@ -146,6 +149,18 @@ public class OutlineMerger {
                 mergeOutlines(inArray);
         }
 
+        public void setScale(float scale) {
+                this.scale = scale;
+        }
+
+        public float getScale() {
+                return scale;
+        }
+
+        public void mergeOutlines(Array<OutlinePolygon> toMerge) {
+                mergeOutlines(toMerge, null);
+        }
+
         /**
          * Merge {@link OutlinePolygon}'s so that when they overlap they look like one.
          * <p/>
@@ -153,7 +168,7 @@ public class OutlineMerger {
          *
          * @param toMerge polygons to merge.
          */
-        public void mergeOutlines(Array<OutlinePolygon> toMerge) {
+        public void mergeOutlines(Array<OutlinePolygon> toMerge, Array<Float> individualScale) {
 
                 if (toMerge.size == 0) return;
                 long begin = System.currentTimeMillis();
@@ -171,10 +186,14 @@ public class OutlineMerger {
 
                         or.myParents.clear();
 
-                        Path path = Util.convertToPath(or.getVerticesRotatedAndTranslated());
+                        float scale = this.scale;
+                        if (individualScale != null) scale *= individualScale.get(i);
+
+                        Path path = Util.convertToPath(or.getVerticesRotatedScaledAndTranslated(or.getAngle(), scale,
+                                or.getPosition().x, or.getPosition().y));
 
                         // if vertices are really close they are set to be equal
-                        alignReallyCloseVertices(previousPoints, path, 20d);
+                        // alignReallyCloseVertices(previousPoints, path, 20d);
 
                         defaultClipper.addPath(path, i == 0 ? Clipper.PolyType.CLIP : Clipper.PolyType.SUBJECT, true);
                 }
@@ -198,13 +217,26 @@ public class OutlineMerger {
                         Array<Vector2> vertices = Util.convertToVectors(path);
 
                         Array<OutlinePolygon> thingsInThisArea = new Array<OutlinePolygon>(true, 4, OutlinePolygon.class);
-                        for (OutlinePolygon outlinePolygon : toMerge) {
+                        for (int i = 0; i < toMerge.size; i++) {
+                                OutlinePolygon outlinePolygon = toMerge.get(i);
 
-                                Array<Vector2> vertices1 = outlinePolygon.getVerticesRotatedAndTranslated();
+                                float scale = this.scale;
+                                if (individualScale != null) scale *= individualScale.get(i);
 
-                                if (Util.intersectEdges(vertices, vertices1)) {
+
+                                Array<Vector2> vertices1 = outlinePolygon.getVerticesRotatedScaledAndTranslated(
+                                        outlinePolygon.getAngle(), scale,
+                                        outlinePolygon.getPosition().x, outlinePolygon.getPosition().y
+                                );
+
+                                boolean addToThisOne = Util.intersectEdges(vertices, vertices1);
+
+                                Vector2 first = vertices1.first();
+
+                                addToThisOne |= Util.isPointInsidePolygon(vertices, first.x, first.y);
+
+                                if (addToThisOne) {
                                         thingsInThisArea.add(outlinePolygon);
-
                                 }
                         }
 

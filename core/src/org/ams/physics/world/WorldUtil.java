@@ -254,13 +254,12 @@ public class WorldUtil {
          * @param worldX
          * @param worldY
          * @param maxDistance
-         * @param type
          * @return the thing closest to given point. Null if no things are
          * within maxDistance.
          */
-        public static Thing getClosestThingIntersectingCircle(Array<Thing> things,
-                                                              float worldX, float worldY, float maxDistance, Class<Thing> type) {
-                Array<Thing> whithinDistance = getThingsIntersectingWithCircle(things, worldX, worldY, maxDistance);
+        public static Thing getClosestThingIntersectingCircle(Array<Thing> things, float worldX, float worldY, float maxDistance, Filter filter) {
+                Array<Thing> whithinDistance = getThingsIntersectingWithCircle(things, worldX, worldY, maxDistance, filter);
+
 
                 if (whithinDistance.size == 0) return null;
                 if (whithinDistance.size == 1) return whithinDistance.first();
@@ -281,7 +280,7 @@ public class WorldUtil {
                         } else if (whithinDistance2.size == 0)
                                 maxDistance = lower + (higher - lower) * 0.5f;
 
-                        whithinDistance2 = getThingsIntersectingWithCircle(whithinDistance, worldX, worldY, maxDistance);
+                        whithinDistance2 = getThingsIntersectingWithCircle(whithinDistance, worldX, worldY, maxDistance, filter);
 
                         if (whithinDistance2.size > 1) higher = maxDistance;
                         if (whithinDistance2.size == 0) lower = maxDistance;
@@ -299,7 +298,7 @@ public class WorldUtil {
          * @return the things 'under' this position that are of type T.
          */
         public static Array<Thing> getThingsIntersectingWithCircle(Array<Thing> things,
-                                                                   float worldX, float worldY, float radius) {
+                                                                   float worldX, float worldY, float radius, Filter filter) {
 
                 Array<Thing> found = new Array();
                 Vector2 v3 = new Vector2(worldX, worldY);

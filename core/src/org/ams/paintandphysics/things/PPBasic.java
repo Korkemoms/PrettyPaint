@@ -73,6 +73,8 @@ class PPBasic implements PPThing {
 
         protected Array<OutlinePolygon> outlinePolygons = new Array<OutlinePolygon>();
 
+        protected Object userData;
+
         /**
          * When using this constructor you must manually set the {@link TexturePolygon}, {@link Polygon}
          * and {@link OutlinePolygon}'s you wish to use. All are optional.
@@ -102,19 +104,36 @@ class PPBasic implements PPThing {
          */
         public PPBasic(PPThingDef def, TextureAtlas atlas) {
                 if (def != null) {
-                        if (def.texturePolygonDef != null)
+                        if (def.texturePolygonDef != null) {
                                 texturePolygon = new TexturePolygon(def.texturePolygonDef, atlas);
+                                texturePolygon.setUserData(this);
+                        }
 
                         if (def.outlinePolygonDefinitions != null) {
                                 for (OutlinePolygonDef outlinePolygonDef : def.outlinePolygonDefinitions) {
-                                        outlinePolygons.add(new OutlinePolygon(outlinePolygonDef));
+                                        OutlinePolygon outlinePolygon = new OutlinePolygon(outlinePolygonDef);
+                                        outlinePolygon.setUserData(this);
+                                        outlinePolygons.add(outlinePolygon);
                                 }
                         }
                         if (def.physicsThingDefinition != null) {
 
                                 physicsThing = DefParser.definitionToThing(def.physicsThingDefinition);
+                                physicsThing.setUserData(this);
                         }
                 }
+        }
+
+
+        @Override
+        public PPBasic setUserData(Object userData) {
+                this.userData = userData;
+                return this;
+        }
+
+        @Override
+        public Object getUserData() {
+                return userData;
         }
 
         /**
