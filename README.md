@@ -38,4 +38,4 @@ Look at the [demo page](TESTAPPS.md) for examples.
 
 # Things im not happy about
 * Very sharp angles when combined with thick edges looks bad
-* Its probably not very fast
+* Its not very fast
