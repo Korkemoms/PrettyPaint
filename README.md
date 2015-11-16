@@ -1,5 +1,5 @@
 # PrettyPaint
-PrettyPaint is for drawing pretty polygons in <a href="https://libgdx.badlogicgames.com/">libGDX</a>. Click [here](TESTAPPS.md) to see some demos.
+PrettyPaint is for drawing pretty polygons in <a href="https://libgdx.badlogicgames.com/">libGDX</a>. Click [here](EXAMPLES.md) to see some demos.
 
 
 ![Screenshot of some PrettyPaint polygons.](https://s3.eu-central-1.amazonaws.com/prettypaint/PrettyPaintScreenshot.jpg "PrettyPaint polygons")
