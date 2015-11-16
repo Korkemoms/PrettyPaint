@@ -36,6 +36,6 @@ Look at the [demo page](TESTAPPS.md) for examples.
 * poly2tri: <a href="http://opensource.org/licenses/BSD-3-Clause">New BSD License</a>
 * Clipper: <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License</a>
 
-# Things im not happy about:
+# Things im not happy about
 * Very sharp angles when combined with thick edges looks bad
 * Its probably not very fast
