@@ -66,7 +66,7 @@ public class PrettyPolygonBatch {
          * This number is currently very large, i hope to learn some tricks so that
          * i can get by with less data per vertex.
          */
-        private final int dataPerVertex = 2 + 1 + 2 + 2 + 1;
+        private final int dataPerVertex = 2 + 1 + 2 + 2 + 2;
 
         /** Max data before we must flush. */
         private final int maxData = 512 * 64;
@@ -164,7 +164,7 @@ public class PrettyPolygonBatch {
                         Shader.Attribute.colorOrJustOpacity.vertexAttribute, // are packed into one float
                         Shader.Attribute.originInTexture.vertexAttribute, // texture translation, alpha values
                         Shader.Attribute.sourcePositionOrBoldness.vertexAttribute, // bottom left of textureRegionName in texture, alpha values
-                        Shader.Attribute.textureSizeAndShaderChooser.vertexAttribute // size of textureRegionName(region must be square), alpha value. (<-0.5 when outline)
+                        Shader.Attribute.regionSizeAndShaderChooser.vertexAttribute // size of textureRegionName(region must be square), alpha value. (<-0.5 when outline)
                 );
         }
 
@@ -285,7 +285,7 @@ public class PrettyPolygonBatch {
         // TODO Comment
         protected void drawTexture(PolygonRegion region, float pos_x, float pos_y, float width, float height,
                                    float scaleX, float scaleY, float rotation, float texture_pos_x, float texture_pos_y, float tex_trans_x,
-                                   float tex_trans_y, float tex_width_and_height, float opacity) {
+                                   float tex_trans_y, float region_width,float region_height, float opacity) {
                 if (!isStarted) throw new RuntimeException("You must call begin() before calling this method.");
 
                 final float[] regionVertices = region.getVertices();
@@ -333,7 +333,9 @@ public class PrettyPolygonBatch {
                         data[dataCount++] = texture_pos_x;
                         data[dataCount++] = texture_pos_y;
 
-                        data[dataCount++] = tex_width_and_height;
+                        data[dataCount++] = region_width;
+                        data[dataCount++] = region_height;
+
                 }
 
                 for (; i < regionVerticesLength; i += 2) {
@@ -350,7 +352,9 @@ public class PrettyPolygonBatch {
                         data[dataCount++] = texture_pos_x;
                         data[dataCount++] = texture_pos_y;
 
-                        data[dataCount++] = tex_width_and_height;
+                        data[dataCount++] = region_width;
+                        data[dataCount++] = region_height;
+
 
                 }
 
@@ -370,7 +374,8 @@ public class PrettyPolygonBatch {
                         data[dataCount++] = texture_pos_x;
                         data[dataCount++] = texture_pos_y;
 
-                        data[dataCount++] = tex_width_and_height;
+                        data[dataCount++] = region_width;
+                        data[dataCount++] = region_height;
                 }
         }
 
@@ -472,6 +477,8 @@ public class PrettyPolygonBatch {
                 data[dataCount++] = weight;
                 data[dataCount++] = 0f;
                 data[dataCount++] = -1f;
+                data[dataCount++] = 0f;
+
 
                 return dataCount;
         }

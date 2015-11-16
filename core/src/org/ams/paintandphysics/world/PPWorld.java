@@ -98,5 +98,11 @@ public class PPWorld {
                 return this;
         }
 
+        public void dispose() {
+                things.clear();
+                boxWorld.dispose();
+                boxWorld = null;
+        }
+
 
 }

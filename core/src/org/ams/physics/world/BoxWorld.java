@@ -348,6 +348,7 @@ public class BoxWorld {
 
 
         public void dispose() {
+                clear();
                 world.dispose();
         }
 

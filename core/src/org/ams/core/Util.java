@@ -424,6 +424,12 @@ public class Util {
                 return regHeight / texHeight;
         }
 
+        public static String safeSubstring(Object o, int n) {
+                String s = o.toString();
+                int y = s.length();
+                return s.substring(0, n < y ? n : y);
+        }
+
         /**
          * Find out if a point is inside a polygon. credit:
          * http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html

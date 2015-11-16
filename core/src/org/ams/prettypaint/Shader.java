@@ -76,12 +76,12 @@ class Shader {
                 public static Attribute sourcePositionOrBoldness = new Attribute("a_texture_position_or_boldness", 2, VertexAttributes.Usage.TextureCoordinates);
 
                 /**
-                 * If < -0.5: Outline mode.
-                 * If >= -0.5: Texture mode.
+                 * If x < -0.5: Outline mode.
+                 * If x >= -0.5: Texture mode.
                  * For outlines: Not used
                  * For textures: The size of the texture relative to the texture region. Alpha value between 0 and 1.
                  */
-                public static Attribute textureSizeAndShaderChooser = new Attribute("a_texture_size", 1, VertexAttributes.Usage.TextureCoordinates);
+                public static Attribute regionSizeAndShaderChooser = new Attribute("a_texture_size", 2, VertexAttributes.Usage.TextureCoordinates);
 
 
         }
@@ -101,7 +101,7 @@ class Shader {
 
         protected static final String textureVertexBranch
                 = "v_pos       = " + Attribute.sourcePositionOrBoldness + "        ;\n"
-                + "v_size      = " + Attribute.textureSizeAndShaderChooser + "     ;\n"
+                + "v_size      = " + Attribute.regionSizeAndShaderChooser + "      ;\n"
                 + "v_color     = " + Attribute.colorOrJustOpacity + "              ;\n"
                 //
                 + "v_texCoord0 = " + Attribute.originInTexture + "                 ;\n"
@@ -125,21 +125,21 @@ class Shader {
                 // needed for texture branch
                 + "attribute vec2 " + Attribute.originInTexture + "                ;\n"
                 + "attribute vec2 " + Attribute.sourcePositionOrBoldness + "       ;\n"
-                + "attribute float " + Attribute.textureSizeAndShaderChooser + "   ;\n"
+                + "attribute vec2 " + Attribute.regionSizeAndShaderChooser + "     ;\n"
                 //
                 // needed for outline branch
                 + "varying vec4 v_color                                            ;\n"
                 //
                 // needed for texture branch
                 + "varying vec2 v_pos                                              ;\n"
-                + "varying float v_size                                            ;\n"
+                + "varying vec2 v_size                                             ;\n"
                 + "varying vec2 v_texCoord0                                        ;\n"
                 //
                 + "void main()                                                      \n"
                 + "{                                                                \n"
-                + "    v_size = " + Attribute.textureSizeAndShaderChooser + "      ;\n"
-                + "    if(v_size<-0.5){" + outlineVertexBranch + " }                \n"
-                + "    else           {" + textureVertexBranch + " }               ;\n"
+                + "    v_size = " + Attribute.regionSizeAndShaderChooser + "       ;\n"
+                + "    if(v_size.x<-0.5){" + outlineVertexBranch + " }              \n"
+                + "    else             {" + textureVertexBranch + " }             ;\n"
                 + "}";
 
 
@@ -151,14 +151,14 @@ class Shader {
                 // needed for texture branch
                 + "varying vec2 v_texCoord0                                        ;\n"
                 + "varying vec2 v_pos                                              ;\n"
-                + "varying float v_size                                            ;\n"
+                + "varying vec2 v_size                                            ;\n"
                 //
                 // needed for outline branch
                 + "varying vec4 v_color                                            ;\n"
                 //
                 + "void main()                                                      \n"
                 + "{                                                                \n"
-                + "    if(v_size<-0.5){" + outlineFragmentBranch + " }              \n"
+                + "    if(v_size.x<-0.5){" + outlineFragmentBranch + " }              \n"
                 + "    else           {" + textureFragmentBranch + " }              \n"
                 + "}";
 }

@@ -26,16 +26,18 @@
 
 package org.ams.testapps.paintandphysics.physicspuzzle;
 
+import com.badlogic.gdx.graphics.Color;
+
 /**
- * Created by Andreas on 12.11.2015.
+ * Use to start a game of physics puzzle. Also useful for saving preferred or completed games.
  */
 public class PhysicsPuzzleDef {
         public String textureRegionName;
-
-        public float blockDim = 0.5f;
 
         public int columns = 8;
         public int rows = 8;
 
         public float timeBetweenBlocks = 1;
+
+        public final Color outlineColor = new Color(Color.BLACK);
 }

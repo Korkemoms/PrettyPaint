@@ -312,7 +312,9 @@ public class TexturePolygon implements PrettyPolygon {
                 float textureWidth = texture.getWidth();
                 float textureHeight = texture.getHeight();
 
-                float tex_width_and_height = textureRegion.getRegionHeight() / textureHeight;
+                float region_width = textureRegion.getRegionHeight() / textureHeight;
+                float region_height = textureRegion.getRegionHeight() / textureHeight;
+
 
                 timeOfLastDrawCall = System.currentTimeMillis();
 
@@ -342,7 +344,9 @@ public class TexturePolygon implements PrettyPolygon {
                                         regionBounds.y / textureHeight,
                                         actualTextureTranslation.x,
                                         actualTextureTranslation.y,
-                                        tex_width_and_height,
+                                        region_width,
+                                        region_height,
+
                                         tmpColorAsFloatBits
                                 );
                         }
@@ -441,9 +445,6 @@ public class TexturePolygon implements PrettyPolygon {
                 boolean change = this.textureRegion == null || !this.textureRegion.equals(textureRegion);
 
                 if (change) {
-
-                        if (textureRegion.getRegionWidth() != textureRegion.getRegionHeight())
-                                throw new IllegalArgumentException("Texture width and height must be equal. :(");
 
                         this.textureRegion = textureRegion;
                         regionBounds = new Rectangle(textureRegion.getRegionX(),

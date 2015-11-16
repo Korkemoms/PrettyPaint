@@ -26,8 +26,9 @@
 package org.ams.physics.world;
 
 
-import com.badlogic.gdx.math.Intersector;
-import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.math.*;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.CircleShape;
 import com.badlogic.gdx.physics.box2d.Fixture;
@@ -37,6 +38,8 @@ import com.badlogic.gdx.physics.box2d.Shape;
 import com.badlogic.gdx.utils.Array;
 import org.ams.physics.things.*;
 import org.ams.core.Util;
+import org.ams.physics.things.Circle;
+import org.ams.physics.things.Polygon;
 
 /**
  * Functions that can be useful when playing with box2d. These can be slow
@@ -479,4 +482,5 @@ public class WorldUtil {
 
                 return alreadyFound;
         }
+
 }

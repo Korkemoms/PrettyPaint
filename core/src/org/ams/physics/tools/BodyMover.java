@@ -182,4 +182,8 @@ public class BodyMover extends InputAdapter {
 
                 return true;
         }
+
+        public void dispose() {
+                if (mouseJoint != null) world.world.destroyJoint(mouseJoint);
+        }
 }
