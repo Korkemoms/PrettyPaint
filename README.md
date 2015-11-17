@@ -28,7 +28,7 @@ I have modified these libraries a little bit to make them work with GWT.
 
 # How to use
 For now you must copy the source code from git if you want to try it.
-Look at the [demo page](TESTAPPS.md) for examples.
+Click [here](EXAMPLES.md) for some examples.
 
 
 # License
