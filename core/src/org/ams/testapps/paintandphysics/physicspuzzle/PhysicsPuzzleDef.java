@@ -37,7 +37,9 @@ public class PhysicsPuzzleDef {
         public int columns = 8;
         public int rows = 8;
 
-        public float timeBetweenBlocks = 1;
+        /** Interval between blocks. if negative block spawn when previous one locks in. */
+        public float interval = 1;
+
 
         public final Color outlineColor = new Color(Color.BLACK);
 }

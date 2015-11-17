@@ -28,12 +28,14 @@ package org.ams.testapps.paintandphysics.physicspuzzle;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.InputMultiplexer;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.Interpolation;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
@@ -41,6 +43,7 @@ import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.BodyDef;
 import com.badlogic.gdx.physics.box2d.ChainShape;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.Timer;
 import org.ams.core.CameraNavigator;
 import org.ams.paintandphysics.things.PPPolygon;
 import org.ams.paintandphysics.things.PPThing;
@@ -59,12 +62,16 @@ import org.ams.prettypaint.*;
 public class PhysicsPuzzle extends ApplicationAdapter {
 
 
-        // stuff that define any particular game
-        private float blockDim = 0.5f, physicsBlockDim, visualBlockDim;
+        // stuff that is directly defined in the definition
         private int columns, rows;
-        private float timeBetweenBlocks, accumulator;
+        private float interval, accumulator;
         private TextureRegion textureRegion;
         private final Color outlineColor = new Color(Color.BLACK);
+
+        // some hardcoded settings
+        private float outlineWidth = 0.02f;
+        private float blockDim = 0.5f;
+        private float physicsBlockDim = blockDim * 0.96f, visualBlockDim = blockDim;
 
 
         // when created as independent app this one is not null and must be disposed
@@ -81,6 +88,10 @@ public class PhysicsPuzzle extends ApplicationAdapter {
         private PPPolygon rightWall;
         private PPPolygon leftWall;
         private PPPolygon floor;
+
+        // used to draw some visual effect when blocks are locked in
+        private Array<PPPolygon> poppers;
+        private Timer popTimer;
 
 
         // PrettyPaint related
@@ -110,10 +121,12 @@ public class PhysicsPuzzle extends ApplicationAdapter {
 
         private boolean paused = false;
 
+        // sounds
+        private Sound popSound;
+
 
         /** Whether this game is run independently or from another ApplicationAdapter. */
         private boolean independent = false;
-
 
         @Override
         public void dispose() {
@@ -145,6 +158,12 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 textureRegionThatIOwn = new TextureRegion(new Texture("images/puzzles/pp.JPG"));
 
                 create(null, textureRegionThatIOwn, def);
+
+
+        }
+
+        private void playPopSound() {
+                popSound.play();
         }
 
         /**
@@ -187,6 +206,8 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 initFromDefinition(textureRegion, def);
 
                 lookAtPuzzle();
+
+                popSound = Gdx.audio.newSound(Gdx.files.internal("sounds/245645_unfa_cartoon-pop-clean.mp3"));
         }
 
         /** Set up the game world according to the textureRegion and definition */
@@ -197,13 +218,10 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 rows = def.rows;
 
 
-                physicsBlockDim = blockDim * 0.96f;
-                visualBlockDim = blockDim;
-
                 outlineColor.set(def.outlineColor);
 
-                timeBetweenBlocks = def.timeBetweenBlocks;
-                accumulator = def.timeBetweenBlocks;
+                interval = def.interval;
+                accumulator = def.interval;
 
                 this.textureRegion = textureRegion;
 
@@ -229,10 +247,94 @@ public class PhysicsPuzzle extends ApplicationAdapter {
 
 
                 createJointAnchor();
+
+
+                poppers = preparePopper();
+                popTimer = new Timer();
+
+                if (interval < 0) activateNextBlock();
+
+        }
+
+        /** Make some visual effect when a block is locked in. */
+        private void popAnimation(Vector2 pos) {
+                // find a free popper
+                PPPolygon popper = null;
+                for (PPPolygon polygon : poppers) {
+                        if (polygon.getOutlinePolygons().first().getOpacity() <= 0) {
+                                popper = polygon;
+                                break;
+                        }
+                }
+                // no free poppers :(
+                if (popper == null) return;
+
+                final PPPolygon finalPopper = popper;
+
+
+                finalPopper.setPosition(pos);
+                finalPopper.setOpacity(1f);
+                finalPopper.setScale(1f);
+
+                final float interval = 0.02f;
+                final float duration = 0.5f;
+
+                popTimer.scheduleTask(new Timer.Task() {
+
+                        long begin = System.currentTimeMillis();
+
+                        @Override
+                        public void run() {
+                                long now = System.currentTimeMillis();
+
+                                float alpha = 0.001f * (now - begin) / duration;
+
+                                float opacity = 1 - Interpolation.pow3Out.apply(alpha);
+                                float scale = 1 + Interpolation.pow3Out.apply(alpha);
+
+                                finalPopper.setOpacity(opacity);
+                                finalPopper.setScale(scale);
+
+                        }
+                }, interval, interval, (int) (duration / interval));
+        }
+
+        /** Prepare some polygons that are used for visual effect when blocks are locked in. */
+        private Array<PPPolygon> preparePopper() {
+
+
+                Array<Vector2> vertices = new Array<Vector2>();
+
+                float half = physicsBlockDim * 0.5f;
+
+                vertices.add(new Vector2(-half, -half));
+                vertices.add(new Vector2(half, -half));
+                vertices.add(new Vector2(half, half));
+                vertices.add(new Vector2(-half, half));
+
+                Array<PPPolygon> poppers = new Array<PPPolygon>();
+                for (int i = 0; i < 5; i++) {
+                        OutlinePolygon outlinePolygon = new OutlinePolygon();
+                        outlinePolygon.setVertices(vertices);
+                        outlinePolygon.setColor(outlineColor);
+                        outlinePolygon.setHalfWidth(outlineWidth * 0.5f);
+                        outlinePolygon.setOpacity(0);
+
+
+                        PPPolygon popper = new PPPolygon();
+                        popper.getOutlinePolygons().add(outlinePolygon);
+                        poppers.add(popper);
+                        world.addThing(popper);
+                }
+
+                return poppers;
+
         }
 
         /** Create and position all the blocks(pieces). */
         private Array<PPPolygon> initBlocks() {
+
+
                 Array<PPPolygon> blocks = prepareBlocks();
 
                 for (PPPolygon block : blocks) {
@@ -356,6 +458,18 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 return paused;
         }
 
+        private void activateNextBlock() {
+                if (blocksLeft.size == 0) return;
+
+                PPPolygon block = blocksLeft.first();
+                blocksLeft.removeIndex(0);
+
+                block.setPosition(0, rows * blockDim * 0.5f + blockDim * 3);
+                block.setVisible(true);
+                block.getPhysicsThing().getBody().setActive(true);
+                activeBlocks.add(block);
+        }
+
         @Override
         public void render() {
                 if (independent) { // if not independent then the owner should clear
@@ -369,28 +483,19 @@ public class PhysicsPuzzle extends ApplicationAdapter {
 
                         // limit accumulation so blocks don't spawn on top of each other when delta time is extreme
                         // (right after loading)
-                        accumulator += Math.min(delta, timeBetweenBlocks * 0.25f);
+                        accumulator += Math.min(delta, interval * 0.25f);
 
 
-                        // adds new blocks every timeBetweenBlocks seconds
-                        if (!debugStart && accumulator > timeBetweenBlocks) {
-                                accumulator -= timeBetweenBlocks;
+                        // adds new blocks every interval seconds
+                        if (!debugStart && accumulator > interval && interval > 0) {
+                                accumulator -= interval;
 
-                                if (blocksLeft.size > 0) {
-                                        PPPolygon block = blocksLeft.first();
-                                        blocksLeft.removeIndex(0);
-
-                                        block.setPosition(0, rows * blockDim * 0.5f + blockDim * 3);
-                                        block.setVisible(true);
-                                        block.getPhysicsThing().getBody().setActive(true);
-                                        activeBlocks.add(block);
-
-                                }
+                                activateNextBlock();
                         }
 
                         // try to lock in blocks and update the "ground"
                         int lockedInThisTime = lockInActiveBlocksThatAreInPositionAndUpdateOutlines();
-                        if (lockedInThisTime > 0 && blocksLeft.size > 0)
+                        if (lockedInThisTime > 0)
                                 updateChainBody();
 
 
@@ -563,6 +668,8 @@ public class PhysicsPuzzle extends ApplicationAdapter {
 
                 platformVertices.addAll(wallVerticesForGroundBody);
 
+
+
                 // first i find all the platforms that the locked blocks form
                 Array<Array<Integer>> platforms = new Array<Array<Integer>>();
                 {
@@ -642,10 +749,18 @@ public class PhysicsPuzzle extends ApplicationAdapter {
 
                         // make sure i don't add vertices that are too close to the previous
                         // (this is only an issue for the top row)
-                        if (platformVertices.size == 0 || platformVertices.peek().dst(beginPos) > 0.01f)
+
+                        boolean distanceOk = platformVertices.peek().dst(beginPos) > 0.001f;
+                        distanceOk &= platformVertices.first().dst(beginPos) > 0.001f;
+
+                        if (platformVertices.size == 0 || distanceOk)
                                 platformVertices.add(beginPos);
 
-                        if (platformVertices.size == 0 || platformVertices.peek().dst(endPos) > 0.01f)
+
+                        distanceOk = platformVertices.peek().dst(endPos) > 0.001f;
+                        distanceOk &= platformVertices.first().dst(endPos) > 0.001f;
+
+                        if (platformVertices.size == 0 || distanceOk)
                                 platformVertices.add(endPos);
 
 
@@ -720,6 +835,11 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                         outlinesToMerge.add(block.getOutlinePolygons().first());
                         if (!debugStart) outlineMerger.mergeOutlines(outlinesToMerge);
 
+                        playPopSound();
+                        popAnimation(block.getTexturePolygon().getPosition());
+
+                        activateNextBlock();
+
                 }
                 return lockedIn;
         }
@@ -742,7 +862,7 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 // add outline
                 OutlinePolygon outlinePolygon = new OutlinePolygon();
                 outlinePolygon.setColor(outlineColor);
-                outlinePolygon.setHalfWidth(0.01f);
+                outlinePolygon.setHalfWidth(outlineWidth * 0.5f);
                 wall.getOutlinePolygons().add(outlinePolygon);
 
                 // set properties of all 3 members
@@ -827,7 +947,7 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 // add outline
                 OutlinePolygon outlinePolygon = new OutlinePolygon();
                 outlinePolygon.setColor(outlineColor);
-                outlinePolygon.setHalfWidth(0.01f);
+                outlinePolygon.setHalfWidth(outlineWidth * 0.5f);
                 block.getOutlinePolygons().add(outlinePolygon);
 
                 // set properties of all 3 PPPolygon members
