@@ -109,7 +109,7 @@ public class JaggedPolygon extends ApplicationAdapter implements InputProcessor 
                 //shadowPolygon.setDrawLineFromFirstToLast(true);
 
 
-                texture = new Texture("contemporary_china.png");
+                texture = new Texture("images/for packing/backgrounds-dark/escheresque_ste.png");
                 texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
 
                 texturePolygon = new TexturePolygon();

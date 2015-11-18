@@ -118,7 +118,7 @@ public class CircleAndBackground extends ApplicationAdapter implements InputProc
                 cameraBounds.add(new Vector2(-hw, hh));
 
                 // prepare background
-                texture = new Texture("skulls.png");
+                texture = new Texture("images/for packing/backgrounds-dark/escheresque_ste.png");
                 texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
 
                 background = new TexturePolygon();

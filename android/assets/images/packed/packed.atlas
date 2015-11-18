@@ -6,56 +6,56 @@ filter: Linear,Linear
 repeat: none
 backgrounds-dark/escheresque_ste
   rotate: false
-  xy: 501, 968
+  xy: 503, 971
   size: 46, 29
   orig: 46, 29
   offset: 0, 0
   index: -1
 backgrounds-light/giftly
   rotate: false
-  xy: 1102, 1398
+  xy: 1105, 1402
   size: 300, 300
   orig: 300, 300
   offset: 0, 0
   index: -1
 backgrounds-light/restaurant_icons
   rotate: false
-  xy: 0, 998
+  xy: 1, 1002
   size: 600, 700
   orig: 600, 700
   offset: 0, 0
   index: -1
 backgrounds-light/sativa
   rotate: false
-  xy: 0, 0
+  xy: 1, 1
   size: 273, 287
   orig: 273, 287
   offset: 0, 0
   index: -1
 thumbnails/stockvault-cow131648
   rotate: false
-  xy: 601, 1365
+  xy: 603, 1369
   size: 500, 333
   orig: 500, 333
   offset: 0, 0
   index: -1
 thumbnails/stockvault-horses102452
   rotate: false
-  xy: 601, 1032
+  xy: 603, 1035
   size: 500, 332
   orig: 500, 332
   offset: 0, 0
   index: -1
 thumbnails/stockvault-male-adult-orangutan109624
   rotate: false
-  xy: 0, 288
+  xy: 1, 290
   size: 500, 333
   orig: 500, 333
   offset: 0, 0
   index: -1
 thumbnails/stockvault-parrot-eating-mango114897
   rotate: false
-  xy: 0, 622
+  xy: 1, 625
   size: 500, 375
   orig: 500, 375
   offset: 0, 0

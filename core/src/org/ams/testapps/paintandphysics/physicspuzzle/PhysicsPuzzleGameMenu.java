@@ -26,11 +26,7 @@
 
 package org.ams.testapps.paintandphysics.physicspuzzle;
 
-import com.badlogic.gdx.ApplicationAdapter;
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.InputMultiplexer;
-import com.badlogic.gdx.Preferences;
-import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.*;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -38,7 +34,6 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Interpolation;
-import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.*;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
@@ -48,13 +43,14 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.GdxRuntimeException;
+import com.badlogic.gdx.utils.Timer;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import org.ams.core.Util;
 import org.ams.prettypaint.PrettyPolygonBatch;
 import org.ams.prettypaint.TexturePolygon;
 
-import java.io.File;
-import java.io.FileFilter;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -71,7 +67,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
         private Stage stage;
 
         // image selection menu things
-        private Image selectedImage;
+        private Image selectedThumbnail;
 
         private Runnable onResize; // used to lay out menus after resize
 
@@ -81,18 +77,29 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
 
         // background stuff
         private OrthographicCamera backgroundCamera;
-        private TexturePolygon menuBackground;
+        private TexturePolygon background;
         private PrettyPolygonBatch polygonBatch;
 
 
+        private Array<String> availableRegions;
         private TextureAtlas textureAtlas; // thumbnails and backgrounds in this atlas
         private TextureRegion currentPuzzleTextureRegion; // stored here so it can be dispose()'ed
 
         // maps thumbnail regions to names used to load a normal sized region when game starts
         private Map<TextureRegion, String> puzzleNames = new HashMap<TextureRegion, String>();
 
+
+        private static final int MAIN_MENU = 0, SETTINGS_MENU = 1, IMAGE_MENU = 2, IN_GAME = 3;
+        private int currentScreen = MAIN_MENU, lastScreen;
+
         @Override
         public void create() {
+                boolean verbose = true;
+                Gdx.app.setLogLevel(verbose ? Application.LOG_DEBUG : Application.LOG_ERROR);
+
+
+                Gdx.app.log("PhysicsPuzzleGameMenu", "Creating application PhysicsPuzzleGameMenu");
+
                 preferences = Gdx.app.getPreferences("PhysicsPuzzle");
 
                 Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
@@ -107,6 +114,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
 
                 // backgrounds and thumbnails are here
                 textureAtlas = new TextureAtlas("images/packed/packed.atlas");
+                availableRegions = findAvailableRegions("images/packed/packed.atlas", "backgrounds-dark", "backgrounds-light", "thumbnails");
 
 
                 // input
@@ -121,6 +129,26 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
 
 
                 showMainMenu();
+
+        }
+
+        private Array<String> findAvailableRegions(String pathToTextureAtlas, String... contains) {
+                String file = Gdx.files.internal(pathToTextureAtlas).readString();
+                String[] lines = file.split("\\n");
+
+                Array<String> result = new Array<String>();
+
+                for (String s : lines) {
+                        boolean match = false;
+                        for (String contain : contains) {
+                                if (s.contains(contain)) {
+                                        match = true;
+                                        break;
+                                }
+                        }
+                        if (match) result.add(s);
+                }
+                return result;
 
         }
 
@@ -147,9 +175,10 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
 
         /** Set a new background. */
         private TexturePolygon setBackground(TextureRegion textureRegion) {
-                if (menuBackground != null) {
-                        TextureRegion textureRegion1 = menuBackground.getTextureRegion();
-                        if (textureRegion == textureRegion1) return menuBackground;
+
+                if (background != null) {
+                        TextureRegion textureRegion1 = background.getTextureRegion();
+                        if (textureRegion == textureRegion1) return background;
                 }
 
                 TexturePolygon texturePolygon = new TexturePolygon();
@@ -163,74 +192,45 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
          * Selects a random image from folder. Then finds the corresponding texture
          * in the atlas, returns null if image is not in atlas.
          */
-        private TextureRegion getRandomRegion(String folder) {
-                // find all images in given folder
-                FileHandle fileHandle = Gdx.files.internal(folder);
-                FileHandle[] imageFiles = fileHandle.list(new FileFilter() {
-                        @Override
-                        public boolean accept(File file) {
-                                String name = file.getName().toLowerCase();
-                                return name.endsWith(".png") || name.endsWith(".jpg");
-                        }
-                });
+        private TextureRegion getRandomRegion(Array<String> available, String match) {
+                Gdx.app.log("PhysicsPuzzleGameMenu", "Requesting random texture from folder=" + match);
 
-                // select random one
-                FileHandle selected = imageFiles[MathUtils.random(imageFiles.length - 1)];
-
-                // get the name it has in the atlas
-                String name = selected.pathWithoutExtension().replace("images/for packing/", "");
-
-                return textureAtlas.findRegion(name);
-        }
-
-
-        /**
-         * Fills an array with images found in the thumbnails folder. The textures
-         * are from the texture atlas. Also stores the names of corresponding
-         * normally sized textures in the map {@link #puzzleNames}.
-         */
-        private Array<Image> loadPuzzleImages() {
-
-                // find thumbnail names
-                FileHandle fileHandle = Gdx.files.internal("images/for packing/thumbnails");
-                FileHandle[] imageFiles = fileHandle.list(new FileFilter() {
-                        @Override
-                        public boolean accept(File file) {
-                                String name = file.getName().toLowerCase();
-                                return name.endsWith(".png") || name.endsWith(".jpg");
-                        }
-                });
-
-
-                Array<Image> images = new Array<Image>();
-                puzzleNames.clear();
-
-                for (FileHandle imageFile : imageFiles) {
-
-                        // find thumbnail region
-                        String name = imageFile.pathWithoutExtension().replace("images/for packing/", "");
-                        TextureRegion textureRegion = textureAtlas.findRegion(name);
-
-                        // add image
-                        final Image image = new Image(textureRegion);
-                        images.add(image);
-                        image.addListener(new ClickListener() {
-                                @Override
-                                public void clicked(InputEvent event, float x, float y) {
-                                        selectImage(image);
-                                }
-                        });
-
-                        // save name for later (we need it to find the normal sized image before game starts)
-                        name = imageFile.path().replace("images/for packing/thumbnails/", "");
-                        puzzleNames.put(textureRegion, name);
+                Array<String> matches = new Array<String>();
+                for (String s : available) {
+                        if (s.contains(match)) matches.add(s);
                 }
-                return images;
+
+
+                return textureAtlas.findRegion(matches.random());
         }
 
+
+        private void startGame() {
+                if (currentPuzzleTextureRegion != null)
+                        currentPuzzleTextureRegion.getTexture().dispose();
+
+                // load the normally sized texture
+                TextureRegion thumbnailRegion = getTextureRegion(selectedThumbnail);
+                currentPuzzleTextureRegion = getBigRegion(thumbnailRegion);
+
+                String name = puzzleNames.get(thumbnailRegion).replace("thumbnails/", "");
+
+                // some game settings
+                int rows = preferences.getInteger("Rows", 7);
+                int columns = preferences.getInteger("Columns", 7);
+                float interval = preferences.getFloat("Interval", 1.5f);
+
+
+                startGame(currentPuzzleTextureRegion, name, rows, columns, interval);
+        }
 
         /** Start puzzling. */
-        private void startGame(TextureRegion textureRegion, int rows, int columns, float interval) {
+        private void startGame(TextureRegion textureRegion, String textureRegionName, int rows, int columns, float interval) {
+
+                Gdx.app.log("PhysicsPuzzleGameMenu",
+                        "Starting game with textureRegion=" + puzzleNames.get(textureRegion)
+                                + ", rows=" + rows + ", columns=" + columns + ", interval=" + interval);
+
 
                 if (physicsPuzzle != null) {
                         physicsPuzzle.dispose();
@@ -240,13 +240,64 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 final PhysicsPuzzleDef physicsPuzzleDef = new PhysicsPuzzleDef();
                 physicsPuzzleDef.columns = columns;
                 physicsPuzzleDef.rows = rows;
-                physicsPuzzleDef.timeBetweenBlocks = interval;
+                physicsPuzzleDef.interval = interval;
                 physicsPuzzleDef.outlineColor.set(Color.BLACK);
+                physicsPuzzleDef.textureRegionName = textureRegionName;
 
                 physicsPuzzle = new PhysicsPuzzle();
-                physicsPuzzle.create(inputMultiplexer, textureRegion, physicsPuzzleDef);
+                physicsPuzzle.create(inputMultiplexer, textureRegion, physicsPuzzleDef, new PhysicsPuzzle.Callback() {
+                        @Override
+                        public void gameOver(boolean win) {
+                                showNewGameButton();
+                        }
+                });
 
                 resumeGame();
+
+        }
+
+        /** Clear other ui and show just a new game button. */
+        private void showNewGameButton() {
+                // prepare button
+                final TextButton textButton = new TextButton("New Game", skin);
+                textButton.setColor(Color.BLACK);
+                textButton.addListener(new ClickListener() {
+                        @Override
+                        public void clicked(InputEvent event, float x, float y) {
+                                showImageSelectionMenu();
+                                hideAndPauseGame = true;
+                                background = setBackground(getRandomRegion(availableRegions, "backgrounds-dark"));
+                        }
+                });
+
+                // add to stage and position in top left corner
+                final Table buttonTable = new Table();
+                buttonTable.add(textButton).width(computePreferredButtonWidth()).align(Align.center);
+
+                stage.clear();
+                stage.addActor(buttonTable);
+                buttonTable.setPosition(buttonTable.getPrefWidth() * 0.5f,
+                        stage.getHeight() - buttonTable.getPrefHeight() * 0.5f);
+
+
+                // prepare animation for button
+
+                final float width = computePreferredButtonWidth();
+                final float height = textButton.getPrefHeight();
+                final float duration = 0.5f;
+
+                textButton.addAction(Actions.sizeTo(width * 1.4f, height, duration * 0.5f, Interpolation.pow3Out));
+                buttonTable.addAction(Actions.moveBy(-width * 0.2f, 0, duration, Interpolation.pow3Out));
+
+                Timer timer = new Timer();
+                timer.scheduleTask(new Timer.Task() {
+                        @Override
+                        public void run() {
+                                textButton.addAction(Actions.sizeTo(width, height, duration * 0.5f, Interpolation.pow3Out));
+                                buttonTable.addAction(Actions.moveBy(width * 0.2f, 0, duration, Interpolation.pow3Out));
+                        }
+                }, duration * 2);
+
         }
 
         private boolean canResumeGame() {
@@ -259,6 +310,10 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
          * Changes background.
          */
         private void resumeGame() {
+                lastScreen = currentScreen;
+                currentScreen = IN_GAME;
+
+                Gdx.app.log("PhysicsPuzzleGameMenu", "Resuming game");
                 hideAndPauseGame = false;
 
                 stage.clear();
@@ -279,6 +334,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 // create buttons
 
                 final TextButton menuButton = new TextButton("Menu", skin);
+                menuButton.setColor(Color.BLACK);
                 menuButton.addListener(new ClickListener() {
                         @Override
                         public void clicked(InputEvent event, float x, float y) {
@@ -289,6 +345,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
 
 
                 final TextButton pauseButton = new TextButton(physicsPuzzle.isPaused() ? "Resume" : "Pause", skin);
+                pauseButton.setColor(Color.BLACK);
                 pauseButton.addListener(new ClickListener() {
                         @Override
                         public void clicked(InputEvent event, float x, float y) {
@@ -315,13 +372,17 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 } else inGameButtonTable.removeActor(menuButton);
 
 
-                menuBackground = setBackground(getRandomRegion("images/for packing/backgrounds-light"));
+                background = setBackground(getRandomRegion(availableRegions, "backgrounds-light"));
 
                 onResize.run();
         }
 
         /** Clear other menus and show menu for customizing a new game. */
         private void showCustomizationMenu() {
+                lastScreen = currentScreen;
+                currentScreen = SETTINGS_MENU;
+
+                Gdx.app.log("PhysicsPuzzleGameMenu", "Showing customization menu");
                 onResize = new Runnable() {
                         @Override
                         public void run() {
@@ -336,10 +397,13 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 stage.addActor(customizeMenu);
                 fillAndCenter(customizeMenu);
 
+
         }
 
         /** Create components for customizing the game after selecting a picture. */
         private Table createCustomizationComponents() {
+
+                Gdx.app.log("PhysicsPuzzleGameMenu", "Creating customization components");
                 int minRows = 1, maxRows = 50;
                 int minColumns = 1, maxColumns = 50;
                 float minInterval = 0.2f, maxInterval = 7f, intervalStep = 0.1f;
@@ -359,7 +423,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 if (tallScreen) cell.row();
 
                 final Slider rowSlider = new Slider(minRows, maxRows, 1, false, skin);
-                rowSlider.setValue(preferences.getInteger("rows", 7));
+                rowSlider.setValue(preferences.getInteger("Rows", 7));
                 controlsTable.add(rowSlider).padBottom(preferredPadding).width(buttonWidth);
 
                 final Label rowCounter = new Label(String.valueOf(rowSlider.getValue()), skin);
@@ -382,7 +446,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
 
 
                 final Slider columnSlider = new Slider(minColumns, maxColumns, 1, false, skin);
-                columnSlider.setValue(preferences.getInteger("columns", 7));
+                columnSlider.setValue(preferences.getInteger("Columns", 7));
                 controlsTable.add(columnSlider).padBottom(preferredPadding).width(buttonWidth);
 
                 final Label columnCounter = new Label(String.valueOf(columnSlider.getValue()), skin);
@@ -399,66 +463,51 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 });
 
 
-                // interval slider and labels
-                cell = controlsTable.add("Time between blocks");
-                if (tallScreen) cell.row();
+                // prepare interval controls
+                final CheckBox intervalCheckBox = new CheckBox("Interval", skin);
+                intervalCheckBox.setChecked(preferences.getBoolean("EnableInterval", false));
 
 
                 final Slider intervalSlider = new Slider(minInterval, maxInterval, intervalStep, false, skin);
-                intervalSlider.setValue(preferences.getFloat("interval", 1.5f));
-                controlsTable.add(intervalSlider).padBottom(preferredPadding).width(buttonWidth);
+                intervalSlider.setValue(preferences.getFloat("Interval", 1.5f));
+                intervalSlider.setVisible(intervalCheckBox.isChecked());
 
-                final Label intervalCounter = new Label(String.valueOf(intervalSlider.getValue()), skin);
-                cell = controlsTable.add(intervalCounter).width(preferredLabelWidth);
-                cell.row();
-
-                if (tallScreen) cell.pad(preferredPadding);
+                final Label intervalCounter = new Label(Util.safeSubstring(intervalSlider.getValue(), 4) + " s", skin);
+                intervalCounter.setVisible(intervalCheckBox.isChecked());
 
                 intervalSlider.addListener(new ChangeListener() {
                         @Override
                         public void changed(ChangeEvent event, Actor actor) {
-                                intervalCounter.setText(Util.safeSubstring(intervalSlider.getValue(), 4));
+                                intervalCounter.setText(Util.safeSubstring(intervalSlider.getValue(), 4) + " s");
                         }
                 });
+
+                intervalCheckBox.addListener(new ChangeListener() {
+                        @Override
+                        public void changed(ChangeEvent event, Actor actor) {
+                                boolean enabled = intervalCheckBox.isChecked();
+
+                                intervalSlider.setVisible(enabled);
+                                intervalCounter.setVisible(enabled);
+
+                                preferences.putBoolean("EnableInterval", enabled);
+                        }
+                });
+
+                // add interval controls
+                Cell<CheckBox> cell3 = controlsTable.add(intervalCheckBox);
+                if (tallScreen) cell3.row();
+                controlsTable.add(intervalSlider).padBottom(preferredPadding).width(buttonWidth);
+                cell = controlsTable.add(intervalCounter).width(preferredLabelWidth);
+                cell.row();
+                if (tallScreen) cell.pad(preferredPadding);
 
 
                 // prepare buttons
 
                 Table buttonTable = new Table();
-
-
-                TextButton playButton = new TextButton("Play", skin);
-                Cell<TextButton> cell1 = buttonTable.add(playButton).width(buttonWidth).pad(preferredPadding);
-                if (tallScreen) cell1.row();
-
-                playButton.addListener(new ClickListener() {
-                        @Override
-                        public void clicked(InputEvent event, float x, float y) {
-
-                                // load the normally sized texture
-                                TextureRegionDrawable drawable = (TextureRegionDrawable) selectedImage.getDrawable();
-                                TextureRegion thumbnailRegion = drawable.getRegion();
-                                String name = puzzleNames.get(thumbnailRegion);
-                                if (currentPuzzleTextureRegion != null)
-                                        currentPuzzleTextureRegion.getTexture().dispose();
-
-                                currentPuzzleTextureRegion = new TextureRegion(new Texture("images/puzzles/" + name));
-
-                                // some game settings
-                                int rows = (int) rowSlider.getValue();
-                                int columns = (int) columnSlider.getValue();
-                                float interval = intervalSlider.getValue();
-
-
-                                startGame(currentPuzzleTextureRegion, rows, columns, interval);
-
-                                // remember to next time
-                                preferences.putInteger("rows", rows);
-                                preferences.putInteger("columns", columns);
-                                preferences.putFloat("interval", interval);
-
-                        }
-                });
+                Cell<TextButton> cell1 = null;
+                boolean addPlayButton = lastScreen == IMAGE_MENU;
 
 
                 TextButton backButton = new TextButton("Back", skin);
@@ -467,11 +516,25 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 backButton.addListener(new ClickListener() {
                         @Override
                         public void clicked(InputEvent event, float x, float y) {
-                                showImageSelectionMenu();
+                                if (lastScreen == IMAGE_MENU)
+                                        showImageSelectionMenu();
+                                else
+                                        showMainMenu();
+
+                                // remember to next time
+
+                                int rows = (int) rowSlider.getValue();
+                                int columns = (int) columnSlider.getValue();
+                                float interval = intervalCheckBox.isChecked() ? intervalSlider.getValue() : -1;
+
+                                preferences.putInteger("Rows", rows);
+                                preferences.putInteger("Columns", columns);
+                                preferences.putFloat("Interval", interval);
                         }
                 });
 
-                if (!tallScreen) swapActors(cell1, cell2);
+
+                if (!tallScreen && addPlayButton) swapActors(cell1, cell2);
 
 
                 // prepare the table
@@ -479,6 +542,22 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 customizeMenu.add(controlsTable).pad(preferredPadding).row();
                 customizeMenu.add(buttonTable).pad(preferredPadding).align(Align.center).row();
                 return customizeMenu;
+        }
+
+        private TextureRegion getBigRegion(TextureRegion thumbnailRegion) {
+                String name = "images/puzzles/" + puzzleNames.get(thumbnailRegion).replace("thumbnails/", "");
+                TextureRegion textureRegion;
+                try {
+                        textureRegion = new TextureRegion(new Texture(name + ".jpg"));
+                } catch (GdxRuntimeException e) {
+                        textureRegion = new TextureRegion(new Texture(name + ".png"));
+                }
+                return textureRegion;
+        }
+
+        private TextureRegion getTextureRegion(Image image) {
+                TextureRegionDrawable drawable = (TextureRegionDrawable) selectedThumbnail.getDrawable();
+                return drawable.getRegion();
         }
 
         private void swapActors(Cell cell, Cell cell1) {
@@ -518,6 +597,10 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
 
         /** Clear other menus. Show main menu. */
         private void showMainMenu() {
+                lastScreen = currentScreen;
+                currentScreen = MAIN_MENU;
+
+                Gdx.app.log("PhysicsPuzzleGameMenu", "Showing main menu");
                 onResize = new Runnable() {
                         @Override
                         public void run() {
@@ -525,7 +608,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                         }
                 };
 
-                menuBackground = setBackground(getRandomRegion("images/for packing/backgrounds-dark"));
+                background = setBackground(getRandomRegion(availableRegions, "backgrounds-dark"));
 
                 Table mainMenu = createMainMenuComponents();
 
@@ -536,6 +619,8 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
         }
 
         private Table createMainMenuComponents() {
+
+                Gdx.app.log("PhysicsPuzzleGameMenu", "Creating main menu components");
                 Table buttonTable = new Table();
 
 
@@ -562,6 +647,16 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 });
 
 
+                TextButton settingsButton = new TextButton("Settings", skin);
+                buttonTable.add(settingsButton).width(buttonWidth).pad(computePreferredPadding()).row();
+                settingsButton.addListener(new ClickListener() {
+                        @Override
+                        public void clicked(InputEvent event, float x, float y) {
+                                showCustomizationMenu();
+                        }
+                });
+
+
                 TextButton exitButton = new TextButton("Exit", skin);
                 buttonTable.add(exitButton).width(buttonWidth).pad(computePreferredPadding()).row();
                 exitButton.addListener(new ClickListener() {
@@ -580,6 +675,10 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
 
         /** Clear other menus. Show a scroll pane with thumbnails. Also some buttons. */
         private void showImageSelectionMenu() {
+                lastScreen = currentScreen;
+                currentScreen = IMAGE_MENU;
+
+                Gdx.app.log("PhysicsPuzzleGameMenu", "Showing image selection menu");
                 onResize = new Runnable() {
                         @Override
                         public void run() {
@@ -587,7 +686,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                         }
                 };
 
-
+                selectedThumbnail = null;
                 Table imageSelectionMenu = createImageSelectionComponents();
 
 
@@ -595,19 +694,53 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 stage.addActor(imageSelectionMenu);
                 fillAndCenter(imageSelectionMenu);
 
+        }
 
-                Image toSelect = selectedImage;
-                selectedImage = null;
-                selectImage(toSelect);
+        /**
+         * Fills an array with images found in the thumbnails folder. The textures
+         * are from the texture atlas. Also stores the names of corresponding
+         * normally sized textures in the map {@link #puzzleNames}.
+         */
+        private Array<Image> preparePuzzleThumbnails() {
+                Gdx.app.log("PhysicsPuzzleGameMenu", "Loading puzzle thumbnails");
 
+
+                Array<Image> images = new Array<Image>();
+                puzzleNames.clear();
+
+                for (final String name : availableRegions) {
+
+                        if (!name.contains("thumbnails")) continue;
+
+                        TextureRegion textureRegion = textureAtlas.findRegion(name);
+
+                        // add image
+                        final Image image = new Image(textureRegion);
+                        images.add(image);
+                        image.addListener(new ClickListener() {
+
+                                @Override
+                                public void clicked(InputEvent event, float x, float y) {
+                                        if (image == selectedThumbnail)
+                                                startGame(); // clicked on already selected thumbnail
+                                        else
+                                                selectThumbnail(image);
+                                }
+                        });
+
+                        // save name for later (we need it to find the normal sized image before game starts)
+                        puzzleNames.put(textureRegion, name);
+                }
+                return images;
         }
 
         /** Create the scrolling images and some buttons. */
         private Table createImageSelectionComponents() {
 
+                Gdx.app.log("PhysicsPuzzleGameMenu", "Creating image selection components");
                 // prepare images
                 Table imageTable = new Table();
-                Array<Image> puzzleImages = loadPuzzleImages();
+                Array<Image> puzzleImages = preparePuzzleThumbnails();
                 for (int i = 0; i < puzzleImages.size; i++) {
                         Image image = puzzleImages.get(i);
 
@@ -627,6 +760,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                         image.addAction(Actions.sizeTo(width, height));
 
                         imageTable.add(image).width(width).height(height).align(Align.center).pad(bigPad, padLeft, bigPad, padRight);
+
                 }
 
 
@@ -645,12 +779,14 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 selectButton.addListener(new ClickListener() {
                         @Override
                         public void clicked(InputEvent event, float x, float y) {
-                                showCustomizationMenu();
+                                if (selectedThumbnail == null) return;
+
+                                startGame();
                         }
                 });
 
 
-                TextButton backButton = new TextButton("Back", skin);
+                TextButton backButton = new TextButton("Main Menu", skin);
                 Cell<TextButton> cell1 = buttonTable.add(backButton).width(buttonWidth).pad(computePreferredPadding());
                 cell1.row();
                 backButton.addListener(new ClickListener() {
@@ -674,23 +810,35 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 return imageSelectionMenu;
         }
 
-        /** Animate the image so it looks bigger. Also resize the previously selected image to normal size. */
-        private void selectImage(Image image) {
-                // scale up current image
-                if (selectedImage != null && selectedImage != image) {
 
-                        float imageWidth = selectedImage.getDrawable().getMinWidth();
-                        float imageHeight = selectedImage.getDrawable().getMinHeight();
+        /** Animate the image so it looks bigger. Also resize the previously selected image to normal size. */
+        private void selectThumbnail(Image image) {
+                if (image == null) {
+                        Gdx.app.log("PhysicsPuzzleGameMenu", "Selecting null image");
+                        return;
+                }
+
+
+                Gdx.app.log("PhysicsPuzzleGameMenu", "Selecting image " + image.getName());
+
+                // scale down previous image
+                if (selectedThumbnail != null && selectedThumbnail != image) {
+
+                        float imageWidth = selectedThumbnail.getDrawable().getMinWidth();
+                        float imageHeight = selectedThumbnail.getDrawable().getMinHeight();
 
                         float height = computePreferredImageHeight();
                         float width = height * imageWidth / imageHeight;
 
-                        selectedImage.addAction(Actions.sizeTo(width, height, 0.2f, Interpolation.pow2));
-                        selectedImage.addAction(Actions.moveBy(width * 0.2f, height * 0.2f, 0.2f, Interpolation.pow2));
+
+                        selectedThumbnail.addAction(Actions.sizeTo(width, height, 0.2f, Interpolation.pow2));
+                        selectedThumbnail.addAction(Actions.moveBy(width * 0.2f, height * 0.2f, 0.2f, Interpolation.pow2));
                 }
 
-                // scale down previous image
-                if (selectedImage != image) {
+
+                // scale up current image
+
+                if (selectedThumbnail != image) {
 
                         float imageWidth = image.getDrawable().getMinWidth();
                         float imageHeight = image.getDrawable().getMinHeight();
@@ -704,7 +852,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                         image.toFront();
                 }
 
-                selectedImage = image;
+                selectedThumbnail = image;
 
         }
 
@@ -716,7 +864,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
 
 
                 polygonBatch.begin(backgroundCamera);
-                menuBackground.draw(polygonBatch);
+                background.draw(polygonBatch);
                 polygonBatch.end();
 
 
@@ -742,6 +890,8 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
 
         @Override
         public void dispose() {
+
+                Gdx.app.log("PhysicsPuzzleGameMenu", "Disposing resources");
                 if (skin != null) skin.dispose();
                 if (stage != null) stage.dispose();
                 if (physicsPuzzle != null) physicsPuzzle.dispose();
@@ -758,14 +908,17 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 preferences = null;
                 currentPuzzleTextureRegion = null;
 
+                Gdx.app.log("PhysicsPuzzleGameMenu", "Finished disposing resources");
         }
 
         @Override
         public void resize(int width, int height) {
+
+                Gdx.app.log("PhysicsPuzzleGameMenu", "Resizing to width=" + width + ", height = " + height + ".");
                 if (stage != null) stage.getViewport().update(width, height, true);
                 if (onResize != null) onResize.run();
                 if (physicsPuzzle != null) physicsPuzzle.resize(width, height);
-                if (menuBackground != null) updateBackgroundBounds(menuBackground);
+                if (background != null) updateBackgroundBounds(background);
         }
 
 

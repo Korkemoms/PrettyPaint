@@ -39,11 +39,21 @@ public class CameraNavigator implements InputProcessor {
         private OrthographicCamera camera;
 
         // some variables used for controlling the camera
-        Vector2 lastWorldTouchDown;
-        Vector2 cameraPositionAtLastWorldTouch;
+        private Vector2 lastWorldTouchDown;
+        private Vector2 cameraPositionAtLastWorldTouch;
+        private boolean active = true;
+
 
         public CameraNavigator(OrthographicCamera camera) {
                 this.camera = camera;
+        }
+
+        public void setActive(boolean active) {
+                this.active = active;
+        }
+
+        public boolean isActive() {
+                return active;
         }
 
         @Override
@@ -64,6 +74,7 @@ public class CameraNavigator implements InputProcessor {
         @Override
         public boolean touchDown(int screenX, int screenY, int pointer, int button) {
 
+                if (!active) return false;
                 lastWorldTouchDown = getPositionOfTouch(screenX, screenY);
                 cameraPositionAtLastWorldTouch = new Vector2(camera.position.x, camera.position.y);
                 return true;
@@ -73,7 +84,7 @@ public class CameraNavigator implements InputProcessor {
         public boolean touchUp(int screenX, int screenY, int pointer, int button) {
                 boolean b = lastWorldTouchDown != null;
                 lastWorldTouchDown = null;
-                return b;
+                return active && b;
         }
 
         @Override
@@ -81,8 +92,9 @@ public class CameraNavigator implements InputProcessor {
                 if (cameraPositionAtLastWorldTouch == null)
                         return false;
 
-                if (lastWorldTouchDown == null)
-                        return false;
+                if (lastWorldTouchDown == null) return false;
+
+                if (!active) return false;
 
                 Vector2 worldTouchDrag = getPositionOfTouch(screenX, screenY);
 
@@ -96,6 +108,7 @@ public class CameraNavigator implements InputProcessor {
 
         @Override
         public boolean scrolled(int amount) {
+                if (!active) return false;
                 setZoom(camera.zoom * (1 + amount * 0.1f), Gdx.input.getX(), Gdx.input.getY());
 
                 return true;

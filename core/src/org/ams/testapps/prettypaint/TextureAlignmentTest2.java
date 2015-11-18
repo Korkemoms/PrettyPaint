@@ -87,8 +87,8 @@ public class TextureAlignmentTest2 extends ApplicationAdapter {
                 polygonBatch = new PrettyPolygonBatch();
 
                 // load textures
-                texture = new Texture("images/pp.JPG");
-                textureAtlas = new TextureAtlas("packedimages/pack.atlas");
+                texture = new Texture("images/puzzles/stockvault-cow131648.jpg");
+                textureAtlas = new TextureAtlas("images/packed/packed.atlas");
                 testTextureRegions = new Array<TextureRegion>();
                 testTextureRegions.add(new TextureRegion(texture));
                 for (TextureRegion textureRegion : textureAtlas.getRegions()) {
@@ -106,7 +106,7 @@ public class TextureAlignmentTest2 extends ApplicationAdapter {
 
                 texturePolygon = new TexturePolygon();
                 texturePolygon.setVertices(vertices);
-                texturePolygon.setTextureRegion(textureAtlas.findRegion("pp"));
+                texturePolygon.setTextureRegion(new TextureRegion(texture));
 
                 shapeRenderer = new ShapeRenderer();
                 shapeRenderer.setAutoShapeType(true);

@@ -312,7 +312,7 @@ public class TexturePolygon implements PrettyPolygon {
                 float textureWidth = texture.getWidth();
                 float textureHeight = texture.getHeight();
 
-                float region_width = textureRegion.getRegionHeight() / textureHeight;
+                float region_width = textureRegion.getRegionWidth() / textureWidth;
                 float region_height = textureRegion.getRegionHeight() / textureHeight;
 
 

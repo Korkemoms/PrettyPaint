@@ -92,8 +92,8 @@ public class TextureAlignmentTest extends ApplicationAdapter {
                 polygonBatch = new PrettyPolygonBatch();
 
                 // load textures
-                texture = new Texture("skulls.png");
-                textureAtlas = new TextureAtlas("packedimages/pack.atlas");
+                texture = new Texture("images/for packing/backgrounds-light/giftly.png");
+                textureAtlas = new TextureAtlas("images/packed/packed.atlas");
                 testTextureRegions = new Array<TextureRegion>();
                 testTextureRegions.add(new TextureRegion(texture));
                 for (TextureRegion textureRegion : textureAtlas.getRegions()) {
@@ -148,14 +148,14 @@ public class TextureAlignmentTest extends ApplicationAdapter {
                 pos.rotateRad(accumulator);
                 texturePolygon.setPosition(pos);
                 texturePolygon.setAngle(-accumulator);
-                texturePolygon.setScale(0.6f + sin);
+                texturePolygon.setScale(1.2f + sin*0.5f);
 
 
                 pos.set(1, 0);
                 pos.rotateRad(-accumulator);
                 texturePolygon1.setPosition(pos);
                 texturePolygon1.setAngle(accumulator);
-                texturePolygon1.setScale(0.6f + sin);
+                texturePolygon1.setScale(1.2f + sin*0.5f);
 
                 // align the textures inside the squares
                 textureAligner.alignTextures(texturePolygons, accumulator * 2f);

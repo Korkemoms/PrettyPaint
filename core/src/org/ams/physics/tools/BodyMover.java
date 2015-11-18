@@ -56,6 +56,8 @@ public class BodyMover extends InputAdapter {
         private float desiredAngle = 0;
         private boolean turning = false;
 
+        private boolean active = true;
+
 
         private WorldUtil.Filter onlyThingWithBodyFilter = new WorldUtil.Filter() {
                 @Override
@@ -70,8 +72,17 @@ public class BodyMover extends InputAdapter {
                 this.camera = camera;
         }
 
+        public void setActive(boolean active) {
+                this.active = active;
+        }
+
+        public boolean isActive() {
+                return active;
+        }
+
         @Override
         public boolean touchUp(int screenX, int screenY, int pointer, int button) {
+
                 boolean b = mouseJoint != null;
                 turning = false;
 
@@ -146,6 +157,8 @@ public class BodyMover extends InputAdapter {
                         world.world.destroyJoint(mouseJoint);
                         mouseJoint = null;
                 }
+
+                if (!active) return false;
 
                 Vector2 worldCoordinates = CoordinateHelper.getWorldCoordinates(camera, screenX, screenY);
 

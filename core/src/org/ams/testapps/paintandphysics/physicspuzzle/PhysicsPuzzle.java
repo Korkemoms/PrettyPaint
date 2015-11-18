@@ -57,7 +57,7 @@ import org.ams.prettypaint.*;
 /**
  * A puzzle game with a touch of physics. Can run as independent application,
  * or can be run from another {@link ApplicationAdapter} using
- * {@link #create(InputMultiplexer, TextureRegion, PhysicsPuzzleDef)}.
+ * {@link #create(InputMultiplexer, TextureRegion, PhysicsPuzzleDef, Callback)}.
  */
 public class PhysicsPuzzle extends ApplicationAdapter {
 
@@ -69,7 +69,7 @@ public class PhysicsPuzzle extends ApplicationAdapter {
         private final Color outlineColor = new Color(Color.BLACK);
 
         // some hardcoded settings
-        private float outlineWidth = 0.02f;
+        private float outlineWidth;
         private float blockDim = 0.5f;
         private float physicsBlockDim = blockDim * 0.96f, visualBlockDim = blockDim;
 
@@ -125,11 +125,24 @@ public class PhysicsPuzzle extends ApplicationAdapter {
         private Sound popSound;
 
 
+        private long renderCount = 0;
+        private Callback gameOverCallback;
+
+
         /** Whether this game is run independently or from another ApplicationAdapter. */
         private boolean independent = false;
 
+        CameraNavigator cameraNavigator;
+
+        private InputMultiplexer inputMultiplexer;
+
         @Override
         public void dispose() {
+                if (inputMultiplexer != null) {
+                        if (bodyMover != null) inputMultiplexer.removeProcessor(bodyMover);
+                        if (cameraNavigator != null) inputMultiplexer.removeProcessor(cameraNavigator);
+                }
+
                 if (world != null) world.dispose();
                 if (bodyMover != null) bodyMover.dispose();
                 if (polygonBatch != null) polygonBatch.dispose();
@@ -157,7 +170,7 @@ public class PhysicsPuzzle extends ApplicationAdapter {
 
                 textureRegionThatIOwn = new TextureRegion(new Texture("images/puzzles/pp.JPG"));
 
-                create(null, textureRegionThatIOwn, def);
+                create(null, textureRegionThatIOwn, def, null);
 
 
         }
@@ -175,15 +188,19 @@ public class PhysicsPuzzle extends ApplicationAdapter {
          * @param textureRegion    The region to draw on the puzzle.
          * @param def              defines this particular game
          */
-        public void create(InputMultiplexer inputMultiplexer, TextureRegion textureRegion, PhysicsPuzzleDef def) {
+        public void create(InputMultiplexer inputMultiplexer, TextureRegion textureRegion, PhysicsPuzzleDef def, Callback gameOverCallback) {
                 if (textureRegion == null) throw new IllegalArgumentException("TextureRegion is null.");
                 if (def == null) throw new IllegalArgumentException("PhysicsPuzzleDef is null.");
+
+                this.gameOverCallback = gameOverCallback;
 
                 // camera stuff
                 float w = Gdx.graphics.getWidth();
                 float h = Gdx.graphics.getHeight();
                 camera = new OrthographicCamera(10, 10 * (h / w));
-                CameraNavigator cameraNavigator = new CameraNavigator(camera);
+
+                cameraNavigator = new CameraNavigator(camera);
+                cameraNavigator.setActive(false);
 
                 // physics
                 world = new PPWorld();
@@ -199,15 +216,16 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                         inputMultiplexer = new InputMultiplexer();
                         Gdx.input.setInputProcessor(inputMultiplexer);
                 }
+                this.inputMultiplexer = inputMultiplexer;
                 inputMultiplexer.addProcessor(bodyMover);
-                //inputMultiplexer.addProcessor(cameraNavigator);
+                inputMultiplexer.addProcessor(cameraNavigator);
 
 
                 initFromDefinition(textureRegion, def);
 
                 lookAtPuzzle();
 
-                popSound = Gdx.audio.newSound(Gdx.files.internal("sounds/245645_unfa_cartoon-pop-clean.mp3"));
+
         }
 
         /** Set up the game world according to the textureRegion and definition */
@@ -221,11 +239,14 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 outlineColor.set(def.outlineColor);
 
                 interval = def.interval;
-                accumulator = def.interval;
+                accumulator = def.interval; // makes one spawn right away
 
                 this.textureRegion = textureRegion;
 
-                // create the puzzle stuff
+                float max = MathUtils.clamp(Math.max(columns, rows), 3, 100);
+                outlineWidth = 0.02f * max / 8;
+
+                // create some puzzle stuff
 
                 // create the puzzle blocks and walls
                 setUpWalls();
@@ -248,12 +269,16 @@ public class PhysicsPuzzle extends ApplicationAdapter {
 
                 createJointAnchor();
 
-
+                // prepare the popping effects
                 poppers = preparePopper();
                 popTimer = new Timer();
+                popSound = Gdx.audio.newSound(Gdx.files.internal("sounds/245645_unfa_cartoon-pop-clean.mp3"));
 
-                if (interval < 0) activateNextBlock();
-
+                // if spawning when previous locked then we must initiate the first spawn
+                if (interval < 0) {
+                        activateNextBlock();
+                        checkIfWinAndCallback();
+                }
         }
 
         /** Make some visual effect when a block is locked in. */
@@ -470,12 +495,16 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 activeBlocks.add(block);
         }
 
+
         @Override
         public void render() {
                 if (independent) { // if not independent then the owner should clear
                         Gdx.gl20.glClearColor(1, 1, 1, 1);
                         Gdx.gl20.glClear(GL20.GL_COLOR_BUFFER_BIT);
                 }
+
+                renderCount++;
+                if (renderCount % 10 == 0) restoreLostBlocks();
 
 
                 if (!paused) {
@@ -491,10 +520,11 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                                 accumulator -= interval;
 
                                 activateNextBlock();
+                                checkIfWinAndCallback();
                         }
 
                         // try to lock in blocks and update the "ground"
-                        int lockedInThisTime = lockInActiveBlocksThatAreInPositionAndUpdateOutlines();
+                        int lockedInThisTime = checkActiveBlocks();
                         if (lockedInThisTime > 0)
                                 updateChainBody();
 
@@ -669,7 +699,6 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 platformVertices.addAll(wallVerticesForGroundBody);
 
 
-
                 // first i find all the platforms that the locked blocks form
                 Array<Array<Integer>> platforms = new Array<Array<Integer>>();
                 {
@@ -812,10 +841,10 @@ public class PhysicsPuzzle extends ApplicationAdapter {
         }
 
         /**
-         * Does what it says. For each active block it checks if it is in position and if
+         * For each active block it checks if it is in position and if
          * there is a block locked in underneath. If so it locks the block in and updates outlines.
          */
-        private int lockInActiveBlocksThatAreInPositionAndUpdateOutlines() {
+        private int checkActiveBlocks() {
                 int lockedIn = 0;
                 for (int i = activeBlocks.size - 1; i >= 0; i--) {
                         PPPolygon block = activeBlocks.get(i);
@@ -839,9 +868,31 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                         popAnimation(block.getTexturePolygon().getPosition());
 
                         activateNextBlock();
+                        checkIfWinAndCallback();
 
                 }
                 return lockedIn;
+        }
+
+        /** Check all active blocks and restore them if they are too far away. */
+        private void restoreLostBlocks() {
+                float maxDst = (rows + columns) * blockDim;
+                for (PPPolygon block : activeBlocks) {
+                        Vector2 pos = block.getPhysicsThing().getBody().getPosition();
+
+                        float dst = pos.dst(0, 0);
+                        if (dst > maxDst) {
+                                block.setPosition(0, rows * blockDim * 0.5f + blockDim * 3);
+                                block.getPhysicsThing().getBody().setLinearVelocity(0, 0);
+                        }
+                }
+        }
+
+        private void checkIfWinAndCallback() {
+                if (blocksLeft.size == 0 && activeBlocks.size == 0) {
+                        gameOverCallback.gameOver(true);
+                        cameraNavigator.setActive(true);
+                }
         }
 
         /** Add a wall or floor. */
@@ -1011,10 +1062,14 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 float horizontalZoom = boundingBox.width / camera.viewportWidth;
                 float verticalZoom = boundingBox.height / camera.viewportHeight;
                 float targetZoom = Math.max(horizontalZoom, verticalZoom);
-                targetZoom *= 1.05f;
+                targetZoom *= 1.2f;
 
                 camera.zoom = targetZoom;
 
                 camera.update();
+        }
+
+        public interface Callback {
+                void gameOver(boolean win);
         }
 }

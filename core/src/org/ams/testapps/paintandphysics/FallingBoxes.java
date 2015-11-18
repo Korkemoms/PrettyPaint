@@ -98,7 +98,7 @@ public class FallingBoxes extends ApplicationAdapter {
 
                 Gdx.input.setInputProcessor(inputMultiplexer);
 
-                texture = new Texture("skulls.png");
+                texture = new Texture("images/for packing/backgrounds-light/giftly.png");
                 texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
 
                 addGround(texture);
