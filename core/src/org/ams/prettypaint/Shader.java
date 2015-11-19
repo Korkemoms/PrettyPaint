@@ -65,15 +65,15 @@ class Shader {
                 /**
                  * For outlines: Ignored :(
                  * For textures: The origin such that when the {@link #position} given is (0,0) then the pixel
-                 * drawn is the pixel found at {@link #originInTexture} in the texture. Alpha values.
+                 * drawn is the pixel found at {@link #positionInRegion} in the texture. Alpha values.
                  */
-                public static Attribute originInTexture = new Attribute("a_texture_origin", 2, VertexAttributes.Usage.TextureCoordinates);
+                public static Attribute positionInRegion = new Attribute("a_texture_origin", 2, VertexAttributes.Usage.TextureCoordinates);
 
                 /**
                  * The outlines: 1st value is boldness.
                  * For textures: The position of the texture in the texture region. Alpha values between 0 and 1.
                  */
-                public static Attribute sourcePositionOrBoldness = new Attribute("a_texture_position_or_boldness", 2, VertexAttributes.Usage.TextureCoordinates);
+                public static Attribute regionPositionOrBoldness = new Attribute("a_texture_position_or_boldness", 2, VertexAttributes.Usage.TextureCoordinates);
 
                 /**
                  * If x < -0.5: Outline mode.
@@ -89,7 +89,7 @@ class Shader {
         protected static final String outlineVertexBranch
                 = "v_color      = " + Attribute.colorOrJustOpacity + "             ;\n"
                 + "float alpha  = " + Attribute.colorOrJustOpacity + "[3]          ;\n"
-                + "float weight = " + Attribute.sourcePositionOrBoldness + ".x     ;\n"
+                + "float weight = " + Attribute.regionPositionOrBoldness + ".x     ;\n"
 
                 + "v_color[3]   =  weight*alpha*alpha                              ;\n"
 
@@ -100,19 +100,24 @@ class Shader {
 
 
         protected static final String textureVertexBranch
-                = "v_pos       = " + Attribute.sourcePositionOrBoldness + "        ;\n"
-                + "v_size      = " + Attribute.regionSizeAndShaderChooser + "      ;\n"
+                = "v_region_pos       = " + Attribute.regionPositionOrBoldness + "        ;\n"
+                + "v_region_size      = " + Attribute.regionSizeAndShaderChooser + "      ;\n"
                 + "v_color     = " + Attribute.colorOrJustOpacity + "              ;\n"
                 //
-                + "v_texCoord0 = " + Attribute.originInTexture + "                 ;\n"
+                + "v_pos_in_region = " + Attribute.positionInRegion + " ;\n"
+
+
                 + "gl_Position = u_worldView * " + Attribute.position + "          ;\n";
 
+        /**
+         * This is not accurate enough on many mobile devices
+         * when drawing seamless textures from a texture atlas.
+         */
         protected static final String textureFragmentBranch
-
-                = "vec2 pos         = v_pos+mod(v_texCoord0,v_size)                ;\n"
-
+                = "vec2 pos         = v_region_pos+mod(v_pos_in_region, v_region_size)    ;\n"
                 + "gl_FragColor     = texture2D(u_texture,pos)                     ;\n"
                 + "gl_FragColor[3] *= v_color[3]                                   ;\n";
+
 
         protected static final String vertexShader
                 = "uniform mat4 u_worldView;\n"
@@ -123,23 +128,23 @@ class Shader {
                 + "attribute vec4 " + Attribute.colorOrJustOpacity + "             ;\n"
                 //
                 // needed for texture branch
-                + "attribute vec2 " + Attribute.originInTexture + "                ;\n"
-                + "attribute vec2 " + Attribute.sourcePositionOrBoldness + "       ;\n"
+                + "attribute vec2 " + Attribute.positionInRegion + "                ;\n"
+                + "attribute vec2 " + Attribute.regionPositionOrBoldness + "       ;\n"
                 + "attribute vec2 " + Attribute.regionSizeAndShaderChooser + "     ;\n"
                 //
                 // needed for outline branch
                 + "varying vec4 v_color                                            ;\n"
                 //
                 // needed for texture branch
-                + "varying vec2 v_pos                                              ;\n"
-                + "varying vec2 v_size                                             ;\n"
-                + "varying vec2 v_texCoord0                                        ;\n"
+                + "varying vec2 v_region_pos                                              ;\n"
+                + "varying vec2 v_region_size                                             ;\n"
+                + "varying vec2 v_pos_in_region                                        ;\n"
                 //
                 + "void main()                                                      \n"
                 + "{                                                                \n"
-                + "    v_size = " + Attribute.regionSizeAndShaderChooser + "       ;\n"
-                + "    if(v_size.x<-0.5){" + outlineVertexBranch + " }              \n"
-                + "    else             {" + textureVertexBranch + " }             ;\n"
+                + "    v_region_size = " + Attribute.regionSizeAndShaderChooser + "       ;\n"
+                + "    if(v_region_size.x<-0.5){" + outlineVertexBranch + " }              \n"
+                + "    else           {" + textureVertexBranch + " }               ;\n"
                 + "}";
 
 
@@ -149,16 +154,16 @@ class Shader {
                 + "uniform sampler2D u_texture                                     ;\n"
                 //
                 // needed for texture branch
-                + "varying vec2 v_texCoord0                                        ;\n"
-                + "varying vec2 v_pos                                              ;\n"
-                + "varying vec2 v_size                                            ;\n"
+                + "varying vec2 v_pos_in_region                                        ;\n"
+                + "varying vec2 v_region_pos                                              ;\n"
+                + "varying vec2 v_region_size                                            ;\n"
                 //
                 // needed for outline branch
                 + "varying vec4 v_color                                            ;\n"
                 //
                 + "void main()                                                      \n"
                 + "{                                                                \n"
-                + "    if(v_size.x<-0.5){" + outlineFragmentBranch + " }              \n"
+                + "    if(v_region_size.x<-0.5){" + outlineFragmentBranch + " }              \n"
                 + "    else           {" + textureFragmentBranch + " }              \n"
                 + "}";
 }

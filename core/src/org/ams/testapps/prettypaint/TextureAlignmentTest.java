@@ -44,6 +44,9 @@ import org.ams.prettypaint.TexturePolygon;
 
 /**
  * Tests the texture alignment functionality of {@link TexturePolygon} and {@link TextureAligner}.
+ *
+ * This test will fail on many mobile devices. Texture regions from atlases are not drawn seamlessly
+ * aside one another. This happens because of low precision in the fragment shader.
  */
 public class TextureAlignmentTest extends ApplicationAdapter {
         // It is best to use a OrthographicCamera with PrettyPaint

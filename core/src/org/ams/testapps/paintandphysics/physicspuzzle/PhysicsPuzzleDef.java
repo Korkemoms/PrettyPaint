@@ -40,6 +40,12 @@ public class PhysicsPuzzleDef {
         /** Interval between blocks. if negative block spawn when previous one locks in. */
         public float interval = 1;
 
+        public boolean varyingSpawnPosition = true;
+        public boolean varyingSpawnColumn = true;
+
+        public float maxRowDifference = 2f;
+
+
 
         public final Color outlineColor = new Color(Color.BLACK);
 }

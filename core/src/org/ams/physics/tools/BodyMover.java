@@ -31,7 +31,6 @@ import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.BodyDef;
 import com.badlogic.gdx.physics.box2d.joints.MouseJoint;
 import com.badlogic.gdx.physics.box2d.joints.MouseJointDef;
@@ -50,7 +49,11 @@ public class BodyMover extends InputAdapter {
         private OrthographicCamera camera;
         private BoxWorld world;
 
+        private ThingWithBody selectedThing;
+
         private MouseJoint mouseJoint;
+
+
         private Vector2 offset = new Vector2();
 
         private float desiredAngle = 0;
@@ -74,6 +77,8 @@ public class BodyMover extends InputAdapter {
 
         public void setActive(boolean active) {
                 this.active = active;
+
+                if (!active) destroyMouseJoint();
         }
 
         public boolean isActive() {
@@ -84,12 +89,8 @@ public class BodyMover extends InputAdapter {
         public boolean touchUp(int screenX, int screenY, int pointer, int button) {
 
                 boolean b = mouseJoint != null;
-                turning = false;
 
-                if (mouseJoint != null) {
-                        world.world.destroyJoint(mouseJoint);
-                        mouseJoint = null;
-                }
+                destroyMouseJoint();
 
                 return b;
         }
@@ -151,17 +152,41 @@ public class BodyMover extends InputAdapter {
 
         @Override
         public boolean touchDown(int screenX, int screenY, int pointer, int button) {
-
-                turning = false;
-                if (mouseJoint != null) {
-                        world.world.destroyJoint(mouseJoint);
-                        mouseJoint = null;
-                }
-
                 if (!active) return false;
 
-                Vector2 worldCoordinates = CoordinateHelper.getWorldCoordinates(camera, screenX, screenY);
 
+                destroyMouseJoint();
+
+
+                // set new selected thing if there is one close enough
+                Vector2 worldCoordinates = CoordinateHelper.getWorldCoordinates(camera, screenX, screenY);
+                ThingWithBody closestThing = getClosestThingWithBody(worldCoordinates);
+                if (closestThing != null)
+                        setSelectedThing(closestThing);
+
+
+                if (selectedThing == null) return false;
+
+
+                // create new mouse joint
+                MouseJointDef mouseJointDef = new MouseJointDef();
+                mouseJointDef.collideConnected = true;
+                mouseJointDef.maxForce = selectedThing.getBody().getMass() * 100;
+                mouseJointDef.dampingRatio = 0;
+                mouseJointDef.bodyA = world.getJointAnchor().getBody();
+                mouseJointDef.bodyB = selectedThing.getBody();
+                mouseJointDef.target.set(selectedThing.getBody().getPosition());
+
+                mouseJoint = (MouseJoint) world.world.createJoint(mouseJointDef);
+
+                offset.set(selectedThing.getBody().getPosition()).sub(worldCoordinates);
+
+
+                return true;
+        }
+
+        /** If no thing is close enough null is returned. */
+        private ThingWithBody getClosestThingWithBody(Vector2 worldCoordinates) {
                 Thing closestThing = WorldUtil.getClosestThingIntersectingCircle(
                         world.things,
                         worldCoordinates.x,
@@ -169,34 +194,41 @@ public class BodyMover extends InputAdapter {
                         Util.getTouchRadius(camera.zoom),
                         onlyThingWithBodyFilter);
 
-                if (closestThing == null) return false;
-
+                if (closestThing == null) return null;
 
                 ThingWithBody jointAnchor = world.getJointAnchor();
-                if (closestThing == jointAnchor) return false;
-                if (closestThing.getBody().getType() == BodyDef.BodyType.StaticBody) return false;
+                if (closestThing == jointAnchor) return null;
+                if (closestThing.getBody().getType() == BodyDef.BodyType.StaticBody) return null;
+                if (!closestThing.getBody().isActive()) return null;
+
 
                 if (jointAnchor == null) {
                         Gdx.app.log("BodyMover", "No joint anchor :(");
-                        return false;
+                        return null;
                 }
+                return (ThingWithBody) closestThing;
+        }
 
-                MouseJointDef mouseJointDef = new MouseJointDef();
-                mouseJointDef.collideConnected = true;
-                mouseJointDef.maxForce = closestThing.getBody().getMass() * 100;
-                mouseJointDef.dampingRatio = 0;
-                mouseJointDef.bodyA = world.getJointAnchor().getBody();
-                mouseJointDef.bodyB = closestThing.getBody();
-                mouseJointDef.target.set(closestThing.getBody().getPosition());
+        public void setSelectedThing(ThingWithBody selectedThing) {
+                this.selectedThing = selectedThing;
+        }
 
-                mouseJoint = (MouseJoint) world.world.createJoint(mouseJointDef);
+        public ThingWithBody getSelectedThing() {
+                return selectedThing;
+        }
 
-                offset.set(closestThing.getBody().getPosition()).sub(worldCoordinates);
-
-                return true;
+        public void destroyMouseJoint() {
+                turning = false;
+                if (mouseJoint != null) {
+                        world.world.destroyJoint(mouseJoint);
+                        mouseJoint = null;
+                }
         }
 
         public void dispose() {
-                if (mouseJoint != null) world.world.destroyJoint(mouseJoint);
+                destroyMouseJoint();
+                world = null;
+                selectedThing = null;
+                camera = null;
         }
 }

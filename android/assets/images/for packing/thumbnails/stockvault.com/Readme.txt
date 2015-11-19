@@ -1,0 +1,1 @@
+Copyright free images found at http://www.stockvault.net/

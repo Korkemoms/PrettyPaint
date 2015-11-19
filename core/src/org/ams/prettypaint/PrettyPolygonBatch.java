@@ -50,10 +50,10 @@ import com.badlogic.gdx.utils.Array;
 public class PrettyPolygonBatch {
 
         /**
-         * The frustum is set ever time one of the begin methods are called.
+         * The frustum is set every time one of the begin methods are called.
          * The Polygons then check if they overlap with this rectangle before drawing.
          */
-        protected final Rectangle frustum = new Rectangle();
+        public final Rectangle frustum = new Rectangle();
 
         /**
          * When enough data is accumulated or another texture is given in a draw call
@@ -99,7 +99,8 @@ public class PrettyPolygonBatch {
         /** Draws text used for debugging. */
         private SpriteBatch debugSpriteBatch;
 
-        private boolean shrinkFrustumWhenDrawn;
+        /** Used to inspect the frustum culling. */
+        private float frustumScale = 1f;
 
         private DebugRenderer debugRenderer;
 
@@ -152,7 +153,7 @@ public class PrettyPolygonBatch {
                 shaderProgram = new ShaderProgram(Shader.vertexShader, Shader.fragmentShader);
 
                 if (!shaderProgram.isCompiled())
-                        Gdx.app.log("PrettyPolygonBatch","PrettyPolygonBatch shader-program not compiled!");
+                        Gdx.app.log("PrettyPolygonBatch", "PrettyPolygonBatch shader-program not compiled!");
 
                 Mesh.VertexDataType vertexDataType = Mesh.VertexDataType.VertexBufferObject;
                 if (Gdx.gl30 != null) {
@@ -162,8 +163,8 @@ public class PrettyPolygonBatch {
                 mesh = new Mesh(vertexDataType, true, maxData, 0,
                         Shader.Attribute.position.vertexAttribute, // position of vertex
                         Shader.Attribute.colorOrJustOpacity.vertexAttribute, // are packed into one float
-                        Shader.Attribute.originInTexture.vertexAttribute, // texture translation, alpha values
-                        Shader.Attribute.sourcePositionOrBoldness.vertexAttribute, // bottom left of textureRegionName in texture, alpha values
+                        Shader.Attribute.positionInRegion.vertexAttribute, // texture translation, alpha values
+                        Shader.Attribute.regionPositionOrBoldness.vertexAttribute, // bottom left of textureRegionName in texture, alpha values
                         Shader.Attribute.regionSizeAndShaderChooser.vertexAttribute // size of textureRegionName(region must be square), alpha value. (<-0.5 when outline)
                 );
         }
@@ -221,12 +222,14 @@ public class PrettyPolygonBatch {
                 shaderProgram.begin();
                 shaderProgram.setUniformMatrix("u_worldView", this.worldView);
 
-                if (drawFrustum && shrinkFrustumWhenDrawn) {
-                        float padding = (float) Math.sqrt(this.frustum.area()) * 0.1f;
-                        this.frustum.x += padding;
-                        this.frustum.y += padding;
-                        this.frustum.width -= 2f * padding;
-                        this.frustum.height -= 2f * padding;
+                if (frustumScale != 1f) {
+                        float addX = this.frustum.width * (frustumScale - 1);
+                        float addY = this.frustum.height * (frustumScale - 1);
+
+                        this.frustum.x -= addX * 0.5f;
+                        this.frustum.y -= addY * 0.5f;
+                        this.frustum.width += addX;
+                        this.frustum.height += addY;
 
                 }
         }
@@ -244,26 +247,26 @@ public class PrettyPolygonBatch {
          * For debugging.
          * This can be used to verify that the frustum culling is working.
          *
-         * @return whether the frustum is being shrunk when its drawn.
+         * @return the frustum scaling factor.
          */
-        public boolean isShrinkingFrustumWhenItsDrawn() {
-                return shrinkFrustumWhenDrawn;
+        public float getFrustumScale() {
+                return frustumScale;
         }
 
         /**
          * For debugging.
          * This can be used to verify that the frustum culling is working.
          *
-         * @param shrinkFrustumForDebugDraw whether to shrink the frustum when drawing it.
+         * @param frustumScale the new frustum scaling factor.
          */
-        public void setShrinkFrustumWhenItsDrawn(boolean shrinkFrustumForDebugDraw) {
-                this.shrinkFrustumWhenDrawn = shrinkFrustumForDebugDraw;
+        public void setFrustumScale(float frustumScale) {
+                this.frustumScale = frustumScale;
         }
 
         /**
          * For debugging.
          * This can be used to verify that the frustum culling is working.
-         * See also {@link #setShrinkFrustumWhenItsDrawn(boolean)}.
+         * See also {@link #setFrustumScale(float)}.
          *
          * @param drawFrustum whether to draw an outline showing the frustum.
          */
@@ -285,7 +288,7 @@ public class PrettyPolygonBatch {
         // TODO Comment
         protected void drawTexture(PolygonRegion region, float pos_x, float pos_y, float width, float height,
                                    float scaleX, float scaleY, float rotation, float texture_pos_x, float texture_pos_y, float tex_trans_x,
-                                   float tex_trans_y, float region_width,float region_height, float opacity) {
+                                   float tex_trans_y, float region_width, float region_height, float opacity) {
                 if (!isStarted) throw new RuntimeException("You must call begin() before calling this method.");
 
                 final float[] regionVertices = region.getVertices();
@@ -551,7 +554,7 @@ public class PrettyPolygonBatch {
                 debugCamera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
                 debugCamera.position.set(
                         Gdx.graphics.getWidth() * 0.5f,
-                        Gdx.graphics.getHeight() * -0.5f+10,
+                        Gdx.graphics.getHeight() * -0.5f + 10,
                         debugCamera.position.z);
 
                 debugCamera.update();

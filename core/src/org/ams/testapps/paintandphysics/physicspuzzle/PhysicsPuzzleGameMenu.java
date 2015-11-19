@@ -31,9 +31,12 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Interpolation;
+
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.*;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
@@ -50,6 +53,7 @@ import org.ams.core.Util;
 import org.ams.prettypaint.PrettyPolygonBatch;
 import org.ams.prettypaint.TexturePolygon;
 
+import static org.ams.core.SceneUtil.*;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -80,7 +84,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
         private TexturePolygon background;
         private PrettyPolygonBatch polygonBatch;
 
-
+        // puzzle textures
         private Array<String> availableRegions;
         private TextureAtlas textureAtlas; // thumbnails and backgrounds in this atlas
         private TextureRegion currentPuzzleTextureRegion; // stored here so it can be dispose()'ed
@@ -94,6 +98,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
 
         @Override
         public void create() {
+
                 boolean verbose = true;
                 Gdx.app.setLogLevel(verbose ? Application.LOG_DEBUG : Application.LOG_ERROR);
 
@@ -101,6 +106,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 Gdx.app.log("PhysicsPuzzleGameMenu", "Creating application PhysicsPuzzleGameMenu");
 
                 preferences = Gdx.app.getPreferences("PhysicsPuzzle");
+                preferences.clear();
 
                 Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
 
@@ -114,7 +120,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
 
                 // backgrounds and thumbnails are here
                 textureAtlas = new TextureAtlas("images/packed/packed.atlas");
-                availableRegions = findAvailableRegions("images/packed/packed.atlas", "backgrounds-dark", "backgrounds-light", "thumbnails");
+                availableRegions = findLinesThatContain("images/packed/packed.atlas", "thumbnails");
 
 
                 // input
@@ -132,15 +138,35 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
 
         }
 
-        private Array<String> findAvailableRegions(String pathToTextureAtlas, String... contains) {
-                String file = Gdx.files.internal(pathToTextureAtlas).readString();
+        /** This is a really crappy solution. */
+        private Array<String> getAvailableBackgrounds(String match) {
+                Array<String> backgrounds = new Array<String>();
+
+                String path = "images/backgrounds-dark/escheresque_ste.png";
+                if (path.contains(match)) backgrounds.add(path);
+
+                path = "images/backgrounds-light/giftly.png";
+                if (path.contains(match)) backgrounds.add(path);
+
+                path = "images/backgrounds-light/sativa.png";
+                if (path.contains(match)) backgrounds.add(path);
+
+                path = "images/backgrounds-light/restaurant_icons.png";
+                if (path.contains(match)) backgrounds.add(path);
+
+                return backgrounds;
+        }
+
+        /** Returns all the lines in the file that contain one or more of the Strings given. */
+        private Array<String> findLinesThatContain(String path, String... searchFor) {
+                String file = Gdx.files.internal(path).readString();
                 String[] lines = file.split("\\n");
 
                 Array<String> result = new Array<String>();
 
                 for (String s : lines) {
                         boolean match = false;
-                        for (String contain : contains) {
+                        for (String contain : searchFor) {
                                 if (s.contains(contain)) {
                                         match = true;
                                         break;
@@ -174,37 +200,29 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
         }
 
         /** Set a new background. */
-        private TexturePolygon setBackground(TextureRegion textureRegion) {
+        private TexturePolygon setRandomBackground(Array<String> selectFrom) {
 
                 if (background != null) {
-                        TextureRegion textureRegion1 = background.getTextureRegion();
-                        if (textureRegion == textureRegion1) return background;
+                        background.getTextureRegion().getTexture().dispose();
                 }
 
+                Texture texture = new Texture(selectFrom.random());
+                texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+
+
                 TexturePolygon texturePolygon = new TexturePolygon();
-                texturePolygon.setTextureRegion(textureRegion);
+                texturePolygon.setTextureRegion(new TextureRegion(texture));
 
                 updateBackgroundBounds(texturePolygon);
                 return texturePolygon;
         }
 
+
         /**
-         * Selects a random image from folder. Then finds the corresponding texture
-         * in the atlas, returns null if image is not in atlas.
+         * Loads the big region for the selectedThumbnail and loads
+         * game settings from {@link #preferences}.
+         * Then it starts the game.
          */
-        private TextureRegion getRandomRegion(Array<String> available, String match) {
-                Gdx.app.log("PhysicsPuzzleGameMenu", "Requesting random texture from folder=" + match);
-
-                Array<String> matches = new Array<String>();
-                for (String s : available) {
-                        if (s.contains(match)) matches.add(s);
-                }
-
-
-                return textureAtlas.findRegion(matches.random());
-        }
-
-
         private void startGame() {
                 if (currentPuzzleTextureRegion != null)
                         currentPuzzleTextureRegion.getTexture().dispose();
@@ -218,7 +236,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 // some game settings
                 int rows = preferences.getInteger("Rows", 7);
                 int columns = preferences.getInteger("Columns", 7);
-                float interval = preferences.getFloat("Interval", 1.5f);
+                float interval = preferences.getFloat("Interval", -1);
 
 
                 startGame(currentPuzzleTextureRegion, name, rows, columns, interval);
@@ -258,6 +276,13 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
 
         /** Clear other ui and show just a new game button. */
         private void showNewGameButton() {
+                onResize = new Runnable() {
+                        @Override
+                        public void run() {
+                                showNewGameButton();
+                        }
+                };
+
                 // prepare button
                 final TextButton textButton = new TextButton("New Game", skin);
                 textButton.setColor(Color.BLACK);
@@ -266,7 +291,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                         public void clicked(InputEvent event, float x, float y) {
                                 showImageSelectionMenu();
                                 hideAndPauseGame = true;
-                                background = setBackground(getRandomRegion(availableRegions, "backgrounds-dark"));
+                                background = setRandomBackground(getAvailableBackgrounds("dark"));
                         }
                 });
 
@@ -296,7 +321,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                                 textButton.addAction(Actions.sizeTo(width, height, duration * 0.5f, Interpolation.pow3Out));
                                 buttonTable.addAction(Actions.moveBy(width * 0.2f, 0, duration, Interpolation.pow3Out));
                         }
-                }, duration * 2);
+                }, duration * 1.4f);
 
         }
 
@@ -372,7 +397,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 } else inGameButtonTable.removeActor(menuButton);
 
 
-                background = setBackground(getRandomRegion(availableRegions, "backgrounds-light"));
+                background = setRandomBackground(getAvailableBackgrounds("light"));
 
                 onResize.run();
         }
@@ -395,7 +420,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
 
                 stage.clear();
                 stage.addActor(customizeMenu);
-                fillAndCenter(customizeMenu);
+                fillAndCenter(stage, customizeMenu);
 
 
         }
@@ -464,7 +489,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
 
 
                 // prepare interval controls
-                final CheckBox intervalCheckBox = new CheckBox("Interval", skin);
+                final CheckBox intervalCheckBox = new CheckBox("Drop interval", skin);
                 intervalCheckBox.setChecked(preferences.getBoolean("EnableInterval", false));
 
 
@@ -544,6 +569,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 return customizeMenu;
         }
 
+        /** Get the big version of the thumbnail. */
         private TextureRegion getBigRegion(TextureRegion thumbnailRegion) {
                 String name = "images/puzzles/" + puzzleNames.get(thumbnailRegion).replace("thumbnails/", "");
                 TextureRegion textureRegion;
@@ -555,21 +581,12 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 return textureRegion;
         }
 
+        /** Get the TextureRegion that the image is drawing. */
         private TextureRegion getTextureRegion(Image image) {
                 TextureRegionDrawable drawable = (TextureRegionDrawable) selectedThumbnail.getDrawable();
                 return drawable.getRegion();
         }
 
-        private void swapActors(Cell cell, Cell cell1) {
-                Actor actor = cell.getActor();
-                Actor actor1 = cell1.getActor();
-
-                cell.clearActor();
-                cell1.clearActor();
-
-                cell.setActor(actor1);
-                cell1.setActor(actor);
-        }
 
         private float computePreferredPadding() {
                 float preferred = Math.min(stage.getWidth(), stage.getHeight()) * 0.005f;
@@ -608,14 +625,14 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                         }
                 };
 
-                background = setBackground(getRandomRegion(availableRegions, "backgrounds-dark"));
+                background = setRandomBackground(getAvailableBackgrounds("dark"));
 
                 Table mainMenu = createMainMenuComponents();
 
                 stage.clear();
                 stage.addActor(mainMenu);
 
-                fillAndCenter(mainMenu);
+                fillAndCenter(stage, mainMenu);
         }
 
         private Table createMainMenuComponents() {
@@ -692,7 +709,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
 
                 stage.clear();
                 stage.addActor(imageSelectionMenu);
-                fillAndCenter(imageSelectionMenu);
+                fillAndCenter(stage, imageSelectionMenu);
 
         }
 
@@ -715,7 +732,23 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                         TextureRegion textureRegion = textureAtlas.findRegion(name);
 
                         // add image
-                        final Image image = new Image(textureRegion);
+                        final Image image = new Image(textureRegion) {
+
+                                // implement frustum culling
+                                Rectangle cullingArea = new Rectangle();
+
+                                @Override
+                                public void draw(Batch batch, float parentAlpha) {
+                                        validate();
+
+                                        getActorBounds(this, cullingArea);
+
+                                        // polygonBatch.frustum will be up to date as long as we are drawing backgrounds
+                                        if (cullingArea.overlaps(polygonBatch.frustum))
+                                                super.draw(batch, parentAlpha);
+
+                                }
+                        };
                         images.add(image);
                         image.addListener(new ClickListener() {
 
@@ -877,16 +910,6 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 stage.draw();
         }
 
-
-        private void fillAndCenter(Table table) {
-                table.setWidth(stage.getWidth());
-                table.setHeight(stage.getHeight());
-
-                float x = stage.getWidth() * 0.5f;
-                float y = stage.getHeight() * 0.5f;
-
-                table.setPosition(x, y, Align.center);
-        }
 
         @Override
         public void dispose() {

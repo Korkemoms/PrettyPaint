@@ -19,7 +19,7 @@ public class DesktopLauncher {
                 config.height = 720;
 
 
-                // packTextures();
+                 packTextures();
 
 
                 new LwjglApplication(new PhysicsPuzzleGameMenu(), config);
@@ -33,11 +33,11 @@ public class DesktopLauncher {
                 settings.filterMag = Texture.TextureFilter.Linear;
                 settings.filterMin = Texture.TextureFilter.Linear;
 
-                settings.paddingX = 2;
-                settings.paddingY = 2;
+                settings.paddingX = 0;
+                settings.paddingY = 0;
 
                 settings.square = true;
-                settings.duplicatePadding = true;
+                //settings.duplicatePadding = true;
 
                 settings.maxWidth = 2048;
                 settings.maxHeight = 2048;
@@ -46,10 +46,6 @@ public class DesktopLauncher {
                 settings.combineSubdirectories = true;
 
 
-
-
                 TexturePacker.process(settings, "images/for packing", "images/packed", "packed.atlas");
         }
-
-
 }

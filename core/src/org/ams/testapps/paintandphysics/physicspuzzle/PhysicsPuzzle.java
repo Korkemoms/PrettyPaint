@@ -49,6 +49,7 @@ import org.ams.paintandphysics.things.PPPolygon;
 import org.ams.paintandphysics.things.PPThing;
 import org.ams.paintandphysics.world.PPWorld;
 import org.ams.physics.things.Polygon;
+import org.ams.physics.things.Thing;
 import org.ams.physics.things.ThingWithBody;
 import org.ams.physics.things.def.PolygonDef;
 import org.ams.physics.tools.BodyMover;
@@ -67,9 +68,13 @@ public class PhysicsPuzzle extends ApplicationAdapter {
         private float interval, accumulator;
         private TextureRegion textureRegion;
         private final Color outlineColor = new Color(Color.BLACK);
+        private boolean varyingSpawnPosition, varyingSpawnColumn;
+        private float maxRowDifference;
 
-        // some hardcoded settings
+        //
         private float outlineWidth;
+
+        // visual must be larger than physics to create overlap for the OutlineMerger
         private float blockDim = 0.5f;
         private float physicsBlockDim = blockDim * 0.96f, visualBlockDim = blockDim;
 
@@ -91,7 +96,9 @@ public class PhysicsPuzzle extends ApplicationAdapter {
 
         // used to draw some visual effect when blocks are locked in
         private Array<PPPolygon> poppers;
-        private Timer popTimer;
+
+        // used for various effects
+        private Timer timer;
 
 
         // PrettyPaint related
@@ -100,9 +107,7 @@ public class PhysicsPuzzle extends ApplicationAdapter {
         private OutlineMerger outlineMerger = new OutlineMerger();
         private Array<OutlinePolygon> outlinesToMerge = new Array<OutlinePolygon>();
 
-
-        // physics/box2d
-        private BodyMover bodyMover;
+        // the "ground"
         private Body chainBody;
 
 
@@ -119,11 +124,11 @@ public class PhysicsPuzzle extends ApplicationAdapter {
         private boolean drawOrigin = false;
         private boolean debugStart = false;
 
-        private boolean paused = false;
 
         // sounds
         private Sound popSound;
 
+        private boolean paused = false;
 
         private long renderCount = 0;
         private Callback gameOverCallback;
@@ -132,8 +137,9 @@ public class PhysicsPuzzle extends ApplicationAdapter {
         /** Whether this game is run independently or from another ApplicationAdapter. */
         private boolean independent = false;
 
-        CameraNavigator cameraNavigator;
-
+        // input
+        private CameraNavigator cameraNavigator;
+        private BodyMover bodyMover;
         private InputMultiplexer inputMultiplexer;
 
         @Override
@@ -149,8 +155,10 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 if (shapeRenderer != null) shapeRenderer.dispose();
                 if (textureRegionThatIOwn != null) textureRegionThatIOwn.getTexture().dispose();
 
+                inputMultiplexer = null;
                 world = null;
                 bodyMover = null;
+                cameraNavigator = null;
                 polygonBatch = null;
                 shapeRenderer = null;
                 textureRegionThatIOwn = null;
@@ -241,6 +249,10 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 interval = def.interval;
                 accumulator = def.interval; // makes one spawn right away
 
+                varyingSpawnPosition = def.varyingSpawnPosition;
+                varyingSpawnColumn = def.varyingSpawnColumn;
+                this.maxRowDifference = def.maxRowDifference;
+
                 this.textureRegion = textureRegion;
 
                 float max = MathUtils.clamp(Math.max(columns, rows), 3, 100);
@@ -271,7 +283,7 @@ public class PhysicsPuzzle extends ApplicationAdapter {
 
                 // prepare the popping effects
                 poppers = preparePopper();
-                popTimer = new Timer();
+                timer = new Timer();
                 popSound = Gdx.audio.newSound(Gdx.files.internal("sounds/245645_unfa_cartoon-pop-clean.mp3"));
 
                 // if spawning when previous locked then we must initiate the first spawn
@@ -291,11 +303,12 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                                 break;
                         }
                 }
-                // no free poppers :(
-                if (popper == null) return;
+
+                if (popper == null) return; // no free poppers :(
 
                 final PPPolygon finalPopper = popper;
 
+                // prepare animation
 
                 finalPopper.setPosition(pos);
                 finalPopper.setOpacity(1f);
@@ -304,7 +317,7 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 final float interval = 0.02f;
                 final float duration = 0.5f;
 
-                popTimer.scheduleTask(new Timer.Task() {
+                timer.scheduleTask(new Timer.Task() {
 
                         long begin = System.currentTimeMillis();
 
@@ -483,16 +496,89 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 return paused;
         }
 
+
         private void activateNextBlock() {
                 if (blocksLeft.size == 0) return;
 
-                PPPolygon block = blocksLeft.first();
-                blocksLeft.removeIndex(0);
+                // determine which block is next
 
-                block.setPosition(0, rows * blockDim * 0.5f + blockDim * 3);
+                PPPolygon block;
+                if (varyingSpawnColumn) {
+
+                        int lowestPlatform = platformLevels.first();
+                        for (int i = 1; i < platformLevels.size; i++) {
+                                if (platformLevels.get(i) < lowestPlatform) {
+                                        lowestPlatform = platformLevels.get(i);
+                                }
+                        }
+
+                        int lowestPossibleRow = lowestPlatform + 1;
+
+                        // select a random block that can be locked in
+                        int col = MathUtils.random(columns - 1);
+                        int row = platformLevels.get(col) + 1;
+                        while (row >= rows || row >= lowestPossibleRow + maxRowDifference) {
+                                col = MathUtils.random(columns - 1);
+                                row = platformLevels.get(col) + 1;
+                        }
+
+                        block = getBlock(row, col);
+                        blocksLeft.removeValue(block, true);
+
+
+                } else {
+                        block = blocksLeft.get(0);
+                        blocksLeft.removeIndex(0);
+                }
+
+
+                // position block
+                float x = 0;
+                if (varyingSpawnPosition) {
+                        // set x corresponding to a random column
+                        int col = MathUtils.random(columns - 1);
+
+                        float rowWidth = blockDim * columns;
+                        float halfRowWidth = rowWidth * 0.5f;
+                        float halfBlockDim = blockDim * 0.5f;
+
+                        x = -halfRowWidth + halfBlockDim;
+                        x += blockDim * col;
+
+                }
+
+                block.setPosition(x, rows * blockDim * 0.5f + blockDim * 3);
                 block.setVisible(true);
                 block.getPhysicsThing().getBody().setActive(true);
                 activeBlocks.add(block);
+
+
+                // prepare spawning animation
+                block.setScale(0);
+
+                final float interval = 0.02f;
+                final float duration = 0.5f;
+
+                final PPPolygon finalBlock = block;
+                timer.scheduleTask(new Timer.Task() {
+
+                        long begin = System.currentTimeMillis();
+
+                        @Override
+                        public void run() {
+                                long now = System.currentTimeMillis();
+
+                                float alpha = 0.001f * (now - begin) / duration;
+                                float scale = Interpolation.pow3Out.apply(alpha);
+
+                                if (scale > 1) scale = 1;
+
+                                finalBlock.setScale(scale);
+
+                        }
+                }, interval, interval, (int) (duration / interval));
+
+                bodyMover.setSelectedThing((ThingWithBody) block.getPhysicsThing());
         }
 
 
@@ -673,7 +759,6 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                         vertices.add(new Vector2(center).add(halfWidth, -halfHeight));
                         vertices.add(new Vector2(center).add(-halfWidth, -halfHeight));
                 }
-
                 {
                         Rectangle boundingRectangle = ((Polygon) leftWall.getPhysicsThing()).getPhysicsBoundingBox();
                         float halfWidth = boundingRectangle.width * 0.5f;
@@ -815,7 +900,7 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 Vector2 currentPos = block.getPhysicsThing().getBody().getPosition();
                 Vector2 finalPosition = (Vector2) block.getUserData();
 
-                if (currentPos.dst(finalPosition) >= 0.02f) return false;
+                if (currentPos.dst(finalPosition) >= 0.04f) return false;
 
                 return platformLevels.get(column) == row - 1;
 
@@ -892,6 +977,7 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 if (blocksLeft.size == 0 && activeBlocks.size == 0) {
                         gameOverCallback.gameOver(true);
                         cameraNavigator.setActive(true);
+                        bodyMover.setActive(false);
                 }
         }
 
@@ -1053,6 +1139,8 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 boundingBox.merge(rightWall.getTexturePolygon().getBoundingRectangle());
                 boundingBox.merge(floor.getTexturePolygon().getBoundingRectangle());
 
+                boundingBox.height += blockDim * 3;
+
                 // look at the center of the puzzle
                 Vector2 center = boundingBox.getCenter(new Vector2());
                 camera.position.x = center.x;
@@ -1062,7 +1150,7 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 float horizontalZoom = boundingBox.width / camera.viewportWidth;
                 float verticalZoom = boundingBox.height / camera.viewportHeight;
                 float targetZoom = Math.max(horizontalZoom, verticalZoom);
-                targetZoom *= 1.2f;
+                targetZoom *= 1.05f;
 
                 camera.zoom = targetZoom;
 
