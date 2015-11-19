@@ -39,3 +39,4 @@ Click [here](EXAMPLES.md) for some examples.
 # Things im not happy about
 * Very sharp angles when combined with thick edges looks bad
 * Its not very fast
+* Seamlessly tiling texture regions from texture atlas does not work on many mobile devices
