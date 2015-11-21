@@ -47,7 +47,6 @@ import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.GdxRuntimeException;
-import com.badlogic.gdx.utils.Timer;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import org.ams.core.Util;
 import org.ams.prettypaint.PrettyPolygonBatch;
@@ -106,7 +105,6 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 Gdx.app.log("PhysicsPuzzleGameMenu", "Creating application PhysicsPuzzleGameMenu");
 
                 preferences = Gdx.app.getPreferences("PhysicsPuzzle");
-                preferences.clear();
 
                 Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
 
@@ -266,63 +264,46 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 physicsPuzzle.create(inputMultiplexer, textureRegion, physicsPuzzleDef, new PhysicsPuzzle.Callback() {
                         @Override
                         public void gameOver(boolean win) {
-                                showNewGameButton();
+                                showGameOverUi();
                         }
                 });
+
+                physicsPuzzle.setZoom(1.25f);
+                physicsPuzzle.setPosition(0, 0.5f);
 
                 resumeGame();
 
         }
 
         /** Clear other ui and show just a new game button. */
-        private void showNewGameButton() {
+        private void showGameOverUi() {
+
                 onResize = new Runnable() {
                         @Override
                         public void run() {
-                                showNewGameButton();
+                                showGameOverUi();
                         }
                 };
 
-                // prepare button
-                final TextButton textButton = new TextButton("New Game", skin);
-                textButton.setColor(Color.BLACK);
-                textButton.addListener(new ClickListener() {
-                        @Override
-                        public void clicked(InputEvent event, float x, float y) {
-                                showImageSelectionMenu();
-                                hideAndPauseGame = true;
-                                background = setRandomBackground(getAvailableBackgrounds("dark"));
-                        }
-                });
+                physicsPuzzle.setZoom(2.2f);
+                physicsPuzzle.setPosition(0, -0.95f);
 
-                // add to stage and position in top left corner
-                final Table buttonTable = new Table();
-                buttonTable.add(textButton).width(computePreferredButtonWidth()).align(Align.center);
 
-                stage.clear();
+
+                showImageSelectionMenu(Align.bottom,Color.BLACK);
+
+
+        }
+
+        private void addMainMenuButton(Color color) {
+                Table buttonTable = createButtonTable(color);
+
                 stage.addActor(buttonTable);
-                buttonTable.setPosition(buttonTable.getPrefWidth() * 0.5f,
-                        stage.getHeight() - buttonTable.getPrefHeight() * 0.5f);
 
+                float x = computePreferredButtonWidth() * 0.5f;
+                float y = stage.getHeight() - buttonTable.getPrefHeight() * 0.5f;
 
-                // prepare animation for button
-
-                final float width = computePreferredButtonWidth();
-                final float height = textButton.getPrefHeight();
-                final float duration = 0.5f;
-
-                textButton.addAction(Actions.sizeTo(width * 1.4f, height, duration * 0.5f, Interpolation.pow3Out));
-                buttonTable.addAction(Actions.moveBy(-width * 0.2f, 0, duration, Interpolation.pow3Out));
-
-                Timer timer = new Timer();
-                timer.scheduleTask(new Timer.Task() {
-                        @Override
-                        public void run() {
-                                textButton.addAction(Actions.sizeTo(width, height, duration * 0.5f, Interpolation.pow3Out));
-                                buttonTable.addAction(Actions.moveBy(width * 0.2f, 0, duration, Interpolation.pow3Out));
-                        }
-                }, duration * 1.4f);
-
+                buttonTable.setPosition(x, y);
         }
 
         private boolean canResumeGame() {
@@ -341,7 +322,6 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 Gdx.app.log("PhysicsPuzzleGameMenu", "Resuming game");
                 hideAndPauseGame = false;
 
-                stage.clear();
 
                 final Table inGameButtonTable = new Table();
 
@@ -364,7 +344,6 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                         @Override
                         public void clicked(InputEvent event, float x, float y) {
                                 showMainMenu();
-                                hideAndPauseGame = true;
                         }
                 });
 
@@ -419,6 +398,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 Table customizeMenu = createCustomizationComponents();
 
                 stage.clear();
+
                 stage.addActor(customizeMenu);
                 fillAndCenter(stage, customizeMenu);
 
@@ -541,10 +521,8 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 backButton.addListener(new ClickListener() {
                         @Override
                         public void clicked(InputEvent event, float x, float y) {
-                                if (lastScreen == IMAGE_MENU)
-                                        showImageSelectionMenu();
-                                else
-                                        showMainMenu();
+
+                                showMainMenu();
 
                                 // remember to next time
 
@@ -558,7 +536,6 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                         }
                 });
 
-
                 if (!tallScreen && addPlayButton) swapActors(cell1, cell2);
 
 
@@ -568,6 +545,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 customizeMenu.add(buttonTable).pad(preferredPadding).align(Align.center).row();
                 return customizeMenu;
         }
+
 
         /** Get the big version of the thumbnail. */
         private TextureRegion getBigRegion(TextureRegion thumbnailRegion) {
@@ -609,7 +587,11 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
         }
 
         private float computePreferredImageHeight() {
-                return Math.min(stage.getWidth(), stage.getHeight()) * 0.5f;
+                return computePreferredImageHeight(0.5f);
+        }
+
+        private float computePreferredImageHeight(float scale) {
+                return Math.min(stage.getWidth(), stage.getHeight()) * scale;
         }
 
         /** Clear other menus. Show main menu. */
@@ -630,7 +612,10 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 Table mainMenu = createMainMenuComponents();
 
                 stage.clear();
+
                 stage.addActor(mainMenu);
+
+                hideAndPauseGame = true;
 
                 fillAndCenter(stage, mainMenu);
         }
@@ -649,7 +634,11 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                         resumeButton.addListener(new ClickListener() {
                                 @Override
                                 public void clicked(InputEvent event, float x, float y) {
+
                                         resumeGame();
+
+                                        if (physicsPuzzle.isGameOver())
+                                                showGameOverUi();
                                 }
                         });
                 }
@@ -659,7 +648,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 playButton.addListener(new ClickListener() {
                         @Override
                         public void clicked(InputEvent event, float x, float y) {
-                                showImageSelectionMenu();
+                                showImageSelectionMenu(Align.center,Color.WHITE);
                         }
                 });
 
@@ -691,7 +680,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
         }
 
         /** Clear other menus. Show a scroll pane with thumbnails. Also some buttons. */
-        private void showImageSelectionMenu() {
+        private void showImageSelectionMenu(final int align,final Color buttonColor) {
                 lastScreen = currentScreen;
                 currentScreen = IMAGE_MENU;
 
@@ -699,18 +688,37 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 onResize = new Runnable() {
                         @Override
                         public void run() {
-                                showImageSelectionMenu();
+                                showImageSelectionMenu(align,buttonColor);
                         }
                 };
 
                 selectedThumbnail = null;
-                Table imageSelectionMenu = createImageSelectionComponents();
-
+                Table imageSelectionMenu = createImageSelectionComponents(computePreferredImageHeight(), align != Align.bottom);
 
                 stage.clear();
                 stage.addActor(imageSelectionMenu);
-                fillAndCenter(stage, imageSelectionMenu);
 
+
+                float relativeHeight = 0.5f;
+                float preferredImageHeight = computePreferredImageHeight(relativeHeight);
+                imageSelectionMenu.setWidth(stage.getWidth());
+                imageSelectionMenu.setHeight(stage.getHeight() * relativeHeight * 1.4f);
+
+                float x = stage.getWidth() * 0.5f;
+
+
+                float y = 0;
+                if (align == Align.bottom) {
+                        y = preferredImageHeight * 0.5f + preferredImageHeight * 0.02f;
+                } else if (align == Align.center) {
+                        y = Gdx.graphics.getHeight() * 0.5f;
+                }
+
+
+                imageSelectionMenu.setPosition(x, y, Align.center);
+
+
+                addMainMenuButton(buttonColor);
         }
 
         /**
@@ -718,7 +726,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
          * are from the texture atlas. Also stores the names of corresponding
          * normally sized textures in the map {@link #puzzleNames}.
          */
-        private Array<Image> preparePuzzleThumbnails() {
+        private Array<Image> preparePuzzleThumbnails(final float preferredHeight) {
                 Gdx.app.log("PhysicsPuzzleGameMenu", "Loading puzzle thumbnails");
 
 
@@ -754,10 +762,13 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
 
                                 @Override
                                 public void clicked(InputEvent event, float x, float y) {
-                                        if (image == selectedThumbnail)
-                                                startGame(); // clicked on already selected thumbnail
-                                        else
-                                                selectThumbnail(image);
+                                        if (image == selectedThumbnail) {
+
+
+                                                stage.clear();
+                                                startGame(); // clicked on already selected thumbnail }
+                                        } else
+                                                selectThumbnail(image, preferredHeight);
                                 }
                         });
 
@@ -768,12 +779,12 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
         }
 
         /** Create the scrolling images and some buttons. */
-        private Table createImageSelectionComponents() {
+        private Table createImageSelectionComponents(float preferredImageHeight, boolean scrollBarBottom) {
 
                 Gdx.app.log("PhysicsPuzzleGameMenu", "Creating image selection components");
                 // prepare images
                 Table imageTable = new Table();
-                Array<Image> puzzleImages = preparePuzzleThumbnails();
+                final Array<Image> puzzleImages = preparePuzzleThumbnails(preferredImageHeight);
                 for (int i = 0; i < puzzleImages.size; i++) {
                         Image image = puzzleImages.get(i);
 
@@ -781,11 +792,11 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                         float imageWidth = image.getDrawable().getMinWidth();
                         float imageHeight = image.getDrawable().getMinHeight();
 
-                        float height = computePreferredImageHeight();
+                        float height = preferredImageHeight;
                         float width = height * imageWidth / imageHeight;
 
-                        float bigPad = width * 0.1f;
-                        float smallPad = width * 0.02f;
+                        float bigPad = height * 0.1f;
+                        float smallPad = height * 0.02f;
 
                         float padLeft = i == 0 ? bigPad : smallPad;
                         float padRight = i == puzzleImages.size - 1 ? bigPad : smallPad;
@@ -797,55 +808,51 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 }
 
 
-                ScrollPane imageScroller = new ScrollPane(imageTable, skin);
+                final ScrollPane imageScroller = new ScrollPane(imageTable, skin);
                 imageScroller.setScrollingDisabled(false, true);
+                imageScroller.setScrollBarPositions(scrollBarBottom, true);
 
 
+                Gdx.app.postRunnable(new Runnable() {
+                        @Override
+                        public void run() {
+                                Image image = puzzleImages.random();
+                                Rectangle bounds = getActorBounds(image, new Rectangle());
+                                imageScroller.scrollTo(bounds.x, bounds.y, bounds.width, bounds.height, true, true);
+                        }
+                });
+
+
+                Table imageSelectionMenu = new Table();
+                imageSelectionMenu.add(imageScroller);
+
+
+                return imageSelectionMenu;
+        }
+
+        private Table createButtonTable(Color buttonColor) {
                 Table buttonTable = new Table();
 
 
                 // prepare buttons
 
                 float buttonWidth = computePreferredButtonWidth();
-                TextButton selectButton = new TextButton("Select", skin);
-                Cell<TextButton> cell = buttonTable.add(selectButton).width(buttonWidth).pad(computePreferredPadding());
-                selectButton.addListener(new ClickListener() {
-                        @Override
-                        public void clicked(InputEvent event, float x, float y) {
-                                if (selectedThumbnail == null) return;
-
-                                startGame();
-                        }
-                });
-
 
                 TextButton backButton = new TextButton("Main Menu", skin);
-                Cell<TextButton> cell1 = buttonTable.add(backButton).width(buttonWidth).pad(computePreferredPadding());
-                cell1.row();
+                backButton.setColor(buttonColor);
+                buttonTable.add(backButton).width(buttonWidth);
                 backButton.addListener(new ClickListener() {
                         @Override
                         public void clicked(InputEvent event, float x, float y) {
                                 showMainMenu();
                         }
                 });
-
-
-                // feels better
-                boolean tallScreen = Gdx.graphics.getHeight() > Gdx.graphics.getWidth();
-                if (!tallScreen) swapActors(cell, cell1);
-
-
-                Table imageSelectionMenu = new Table();
-                imageSelectionMenu.add(imageScroller).row();
-                imageSelectionMenu.add(buttonTable);
-
-
-                return imageSelectionMenu;
+                return buttonTable;
         }
 
 
         /** Animate the image so it looks bigger. Also resize the previously selected image to normal size. */
-        private void selectThumbnail(Image image) {
+        private void selectThumbnail(Image image, float preferredHeight) {
                 if (image == null) {
                         Gdx.app.log("PhysicsPuzzleGameMenu", "Selecting null image");
                         return;
@@ -860,7 +867,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                         float imageWidth = selectedThumbnail.getDrawable().getMinWidth();
                         float imageHeight = selectedThumbnail.getDrawable().getMinHeight();
 
-                        float height = computePreferredImageHeight();
+                        float height = preferredHeight;
                         float width = height * imageWidth / imageHeight;
 
 

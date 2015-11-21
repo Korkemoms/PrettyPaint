@@ -19,7 +19,7 @@ public class DesktopLauncher {
                 config.height = 720;
 
 
-                 packTextures();
+                // packTextures();
 
 
                 new LwjglApplication(new PhysicsPuzzleGameMenu(), config);
@@ -28,13 +28,12 @@ public class DesktopLauncher {
         public static void packTextures() {
                 TexturePacker.Settings settings = new TexturePacker.Settings();
 
-                // linear filter cause annoying little "edges" if you zoom in
-                // on a TexturePolygon
+
                 settings.filterMag = Texture.TextureFilter.Linear;
                 settings.filterMin = Texture.TextureFilter.Linear;
 
-                settings.paddingX = 0;
-                settings.paddingY = 0;
+                settings.paddingX = 1;
+                settings.paddingY = 1;
 
                 settings.square = true;
                 //settings.duplicatePadding = true;

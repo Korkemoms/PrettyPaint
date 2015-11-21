@@ -130,6 +130,8 @@ public class PhysicsPuzzle extends ApplicationAdapter {
 
         private boolean paused = false;
 
+        private boolean isGameOver = false;
+
         private long renderCount = 0;
         private Callback gameOverCallback;
 
@@ -137,8 +139,16 @@ public class PhysicsPuzzle extends ApplicationAdapter {
         /** Whether this game is run independently or from another ApplicationAdapter. */
         private boolean independent = false;
 
-        // input
+        // input and camera
+
+        private float zoom = 1f;
+
+        /** With values between -1 and 1 the entire puzzle is visible. */
+        private final Vector2 position = new Vector2();
+
         private CameraNavigator cameraNavigator;
+
+
         private BodyMover bodyMover;
         private InputMultiplexer inputMultiplexer;
 
@@ -181,6 +191,33 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 create(null, textureRegionThatIOwn, def, null);
 
 
+        }
+
+        public void setZoom(float zoom) {
+                boolean change = zoom != this.zoom;
+                this.zoom = zoom;
+                if (change) lookAtPuzzle();
+        }
+
+        public float getZoom() {
+                return zoom;
+        }
+
+        /** With values between -1 and 1 the entire puzzle is visible. */
+        public void setPosition(Vector2 position) {
+                this.position.set(position);
+                lookAtPuzzle();
+        }
+
+        /** With values between -1 and 1 the entire puzzle is visible. */
+        public void setPosition(float x, float y) {
+                this.position.set(x, y);
+                lookAtPuzzle();
+        }
+
+        /** With values between -1 and 1 the entire puzzle is visible. */
+        public Vector2 getPosition() {
+                return position;
         }
 
         private void playPopSound() {
@@ -255,7 +292,7 @@ public class PhysicsPuzzle extends ApplicationAdapter {
 
                 this.textureRegion = textureRegion;
 
-                float max = MathUtils.clamp(Math.max(columns, rows), 3, 100);
+                float max = MathUtils.clamp(Math.max(columns, rows), 10, 100);
                 outlineWidth = 0.02f * max / 8;
 
                 // create some puzzle stuff
@@ -503,6 +540,7 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 // determine which block is next
 
                 PPPolygon block;
+                int col, row;
                 if (varyingSpawnColumn) {
 
                         int lowestPlatform = platformLevels.first();
@@ -515,35 +553,41 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                         int lowestPossibleRow = lowestPlatform + 1;
 
                         // select a random block that can be locked in
-                        int col = MathUtils.random(columns - 1);
-                        int row = platformLevels.get(col) + 1;
-                        while (row >= rows || row >= lowestPossibleRow + maxRowDifference) {
+
+                        do {
                                 col = MathUtils.random(columns - 1);
                                 row = platformLevels.get(col) + 1;
-                        }
+                        } while (row >= rows || row >= lowestPossibleRow + maxRowDifference);
 
                         block = getBlock(row, col);
                         blocksLeft.removeValue(block, true);
 
-
                 } else {
                         block = blocksLeft.get(0);
+                        col = getColumn(block);
                         blocksLeft.removeIndex(0);
                 }
 
 
                 // position block
+
                 float x = 0;
-                if (varyingSpawnPosition) {
-                        // set x corresponding to a random column
-                        int col = MathUtils.random(columns - 1);
+                if (varyingSpawnPosition) { // find suitable x coordinate
+
+
+                        // find a column that is not the target column of the block
+                        int _col;
+                        do {
+                                _col = MathUtils.random(columns - 1);
+                        } while (_col == col);
+
 
                         float rowWidth = blockDim * columns;
                         float halfRowWidth = rowWidth * 0.5f;
                         float halfBlockDim = blockDim * 0.5f;
 
                         x = -halfRowWidth + halfBlockDim;
-                        x += blockDim * col;
+                        x += blockDim * _col;
 
                 }
 
@@ -961,7 +1005,7 @@ public class PhysicsPuzzle extends ApplicationAdapter {
 
         /** Check all active blocks and restore them if they are too far away. */
         private void restoreLostBlocks() {
-                float maxDst = (rows + columns) * blockDim;
+                float maxDst = (rows + columns) * blockDim * 2;
                 for (PPPolygon block : activeBlocks) {
                         Vector2 pos = block.getPhysicsThing().getBody().getPosition();
 
@@ -978,7 +1022,12 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                         gameOverCallback.gameOver(true);
                         cameraNavigator.setActive(true);
                         bodyMover.setActive(false);
+                        isGameOver = true;
                 }
+        }
+
+        public boolean isGameOver() {
+                return isGameOver;
         }
 
         /** Add a wall or floor. */
@@ -1132,30 +1181,39 @@ public class PhysicsPuzzle extends ApplicationAdapter {
         }
 
         private void lookAtPuzzle() {
-                // look at the entire puzzle with a little margin on the sides
-
+                // find puzzle bounding box
                 Rectangle boundingBox = new Rectangle();
                 boundingBox.set(leftWall.getTexturePolygon().getBoundingRectangle());
                 boundingBox.merge(rightWall.getTexturePolygon().getBoundingRectangle());
                 boundingBox.merge(floor.getTexturePolygon().getBoundingRectangle());
 
-                boundingBox.height += blockDim * 3;
+                // adjust the bounding box for zooming
+                float differenceY = boundingBox.height * (zoom - 1);
+                float differenceX = boundingBox.width * (zoom - 1);
 
-                // look at the center of the puzzle
+                boundingBox.height += differenceY;
+                boundingBox.width += differenceX;
+                boundingBox.y -= differenceY * 0.5f;
+                boundingBox.x -= differenceX * 0.5f;
+
+                boundingBox.x += 0.5f * position.x * differenceX;
+                boundingBox.y += 0.5f * position.y * differenceY;
+
+
+                // look at the entire bounding box
                 Vector2 center = boundingBox.getCenter(new Vector2());
                 camera.position.x = center.x;
                 camera.position.y = center.y;
 
-                // zoom so we see all of it with some margin on the sides
                 float horizontalZoom = boundingBox.width / camera.viewportWidth;
                 float verticalZoom = boundingBox.height / camera.viewportHeight;
                 float targetZoom = Math.max(horizontalZoom, verticalZoom);
-                targetZoom *= 1.05f;
 
                 camera.zoom = targetZoom;
 
                 camera.update();
         }
+
 
         public interface Callback {
                 void gameOver(boolean win);
