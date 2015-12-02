@@ -78,6 +78,9 @@ public class TexturePolygon implements PrettyPolygon {
         private Rectangle regionBounds;
         /** Only the opacity value is used. */
         private float tmpColorAsFloatBits = tmpColor.toFloatBits();
+
+        private Color color = Color.WHITE;
+
         /** stored to avoid extra computation when setting new texture, client code can also make use of these triangles. */
         private float[] triangles;
         /** Rotation of the texture. */
@@ -346,7 +349,6 @@ public class TexturePolygon implements PrettyPolygon {
                                         actualTextureTranslation.y,
                                         region_width,
                                         region_height,
-
                                         tmpColorAsFloatBits
                                 );
                         }
@@ -357,7 +359,7 @@ public class TexturePolygon implements PrettyPolygon {
         /**
          * Do not modify. If you want to change, translate, rotate or scale the polygon use
          * {@link #setVertices(Array)}, {@link #setPosition(Vector2)}, {@link #setAngle(float)} or {@link #setScale(float)} respectively.
-         * <p/>
+         * <p>
          * These vertices are not affected by scale.
          *
          * @return the vertices set by {@link #setVertices(Array)}. Do not modify.
@@ -369,10 +371,10 @@ public class TexturePolygon implements PrettyPolygon {
 
         /**
          * Set the vertices of the polygon. The polygon can be self intersecting.
-         * <p/>
+         * <p>
          * It is recommended that the centroid of these vertices is (0,0).
-         * <p/>
-         * <p/>
+         * <p>
+         * <p>
          * Given array is copied.
          *
          * @param vertices Vertices defining the polygon.
@@ -433,7 +435,7 @@ public class TexturePolygon implements PrettyPolygon {
          * The given region should be square, otherwise it will not look seamless. I hope to fix
          * this soon.
          * The texture region should contain a seamless texture.
-         * <p/>
+         * <p>
          * Use a {@link TextureAtlas} to manage your texture regions.
          *
          * @param textureRegion the region you wish to draw on the polygon defined by {@link #setVertices(Array)}.
@@ -474,7 +476,7 @@ public class TexturePolygon implements PrettyPolygon {
 
         /**
          * Source translation allows you move the texture around within the polygon.
-         * <p/>
+         * <p>
          * Do not modify. If you wish to change SourceTranslation use one of these methods:
          * -{@link #setTextureTranslation(float, float)}
          * -{@link #setTextureTranslation(Vector2)}
@@ -646,6 +648,23 @@ public class TexturePolygon implements PrettyPolygon {
                 tmpColorAsFloatBits = tmpColor.toFloatBits();
                 return this;
 
+        }
+
+        /** The opacity value is ignored. See {@link #setOpacity(float)}. */
+        public TexturePolygon setColor(Color color) {
+                this.color = color;
+
+                tmpColor.r = color.r;
+                tmpColor.g = color.g;
+                tmpColor.b = color.b;
+
+                tmpColorAsFloatBits = tmpColor.toFloatBits();
+                return this;
+        }
+
+        /** The opacity value is ignored. See {@link #setOpacity(float)}. */
+        public Color getColor() {
+                return color;
         }
 
         /**

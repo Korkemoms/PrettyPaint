@@ -42,19 +42,19 @@ public class PPThingDef {
 
         public ThingDef physicsThingDefinition;
 
-        public Class typeOfThing;
+        public String typeOfThing;
 
         public static PPThing definitionToThing(PPThingDef definition) {
-                if (definition.typeOfThing.equals(PPCircle.class))
+                if (definition.typeOfThing.equals("PPCircle"))
                         return new PPCircle(definition);
-                else if (definition.typeOfThing.equals(PPPolygon.class))
+                else if (definition.typeOfThing.equals("PPPolygon"))
                         return new PPPolygon(definition);
 
                 throw new IllegalArgumentException("Unknown PPThingDef");
         }
 
         public PPThingDef(PPThing toCopy) {
-                typeOfThing = toCopy.getClass();
+                typeOfThing = toCopy.getType();
 
                 for (OutlinePolygon outlinePolygon : toCopy.getOutlinePolygons()) {
                         OutlinePolygonDef outlinePolygonDef = new OutlinePolygonDef(outlinePolygon);

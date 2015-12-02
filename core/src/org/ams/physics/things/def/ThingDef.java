@@ -38,7 +38,7 @@ package org.ams.physics.things.def;
  */
 public abstract class ThingDef {
         public int id;
-        public Object userData;
+        //public Object userData;
 
         public ThingDef() {
 
@@ -46,7 +46,7 @@ public abstract class ThingDef {
 
         public ThingDef(ThingDef toCopy) {
                 id = toCopy.id;
-                userData = toCopy.userData;
+                //userData = toCopy.userData;
         }
 
         public ThingDef getCopy() {

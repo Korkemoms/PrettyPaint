@@ -4,13 +4,7 @@ import com.badlogic.gdx.backends.lwjgl.LwjglApplication;
 import com.badlogic.gdx.backends.lwjgl.LwjglApplicationConfiguration;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.tools.texturepacker.TexturePacker;
-import org.ams.testapps.paintandphysics.FallingBoxes;
-import org.ams.testapps.paintandphysics.physicspuzzle.PhysicsPuzzle;
-import org.ams.testapps.paintandphysics.physicspuzzle.PhysicsPuzzleGameMenu;
-import org.ams.testapps.prettypaint.CircleAndBackground;
-import org.ams.testapps.prettypaint.JaggedPolygon;
-import org.ams.testapps.prettypaint.TextureAlignmentTest;
-import org.ams.testapps.prettypaint.TextureAlignmentTest2;
+import org.ams.testapps.paintandphysics.cardhouse.CardHouseGameMenu;
 
 public class DesktopLauncher {
         public static void main(String[] arg) {
@@ -19,10 +13,10 @@ public class DesktopLauncher {
                 config.height = 720;
 
 
-                // packTextures();
+                packTextures();
 
 
-                new LwjglApplication(new PhysicsPuzzleGameMenu(), config);
+                new LwjglApplication(new CardHouseGameMenu(), config);
         }
 
         public static void packTextures() {
@@ -34,17 +28,20 @@ public class DesktopLauncher {
 
                 settings.paddingX = 1;
                 settings.paddingY = 1;
+                //settings.format = Pixmap.Format.RGB888;
+                //settings.outputFormat = "jpeg";
+
 
                 settings.square = true;
                 //settings.duplicatePadding = true;
 
-                settings.maxWidth = 2048;
-                settings.maxHeight = 2048;
+                settings.maxWidth = 1024;
+                settings.maxHeight = 1024;
 
 
                 settings.combineSubdirectories = true;
 
 
-                TexturePacker.process(settings, "images/for packing", "images/packed", "packed.atlas");
+                TexturePacker.process(settings, "ui\\custom\\dark-hdpi", "ui\\custom", "custom.atlas");
         }
 }

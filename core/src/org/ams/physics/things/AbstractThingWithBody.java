@@ -34,6 +34,7 @@ package org.ams.physics.things;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.BodyDef;
+import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.physics.box2d.FixtureDef;
 import org.ams.physics.things.def.ThingDef;
 import org.ams.physics.things.def.ThingWithBodyDef;
@@ -45,11 +46,11 @@ import org.ams.physics.world.BoxWorld;
 public abstract class AbstractThingWithBody extends AbstractThing implements ThingWithBody {
 
         /**
-         * Definition from when this thing was created.
+         * Definition from when this thing was created. Some values can change.
          */
         protected BodyDef bodyDef;
         /**
-         * Definition from when this thing was created.
+         * Definition from when this thing was created. Some values can change.
          */
         protected FixtureDef fixtureDef;
 
@@ -193,12 +194,27 @@ public abstract class AbstractThingWithBody extends AbstractThing implements Thi
         @Override
         public Vector2 getPosition() {
                 if (body != null) return body.getPosition();
-                return new Vector2();
+                return posForLater != null ? posForLater : new Vector2();
         }
 
         @Override
         public float getAngle() {
                 if (body != null) return body.getAngle();
-                return 0;
+                return angleForLater;
+        }
+
+        @Override
+        public void setFriction(float friction) {
+                fixtureDef.friction = friction;
+                if (body != null) {
+                        for (Fixture fixture : body.getFixtureList()) {
+                                fixture.setFriction(friction);
+                        }
+                }
+        }
+
+        @Override
+        public float getFriction() {
+                return fixtureDef.friction;
         }
 }

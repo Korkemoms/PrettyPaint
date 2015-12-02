@@ -43,13 +43,12 @@ import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.BodyDef;
 import com.badlogic.gdx.physics.box2d.ChainShape;
 import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.utils.Timer;
 import org.ams.core.CameraNavigator;
+import org.ams.core.Timer;
 import org.ams.paintandphysics.things.PPPolygon;
 import org.ams.paintandphysics.things.PPThing;
 import org.ams.paintandphysics.world.PPWorld;
 import org.ams.physics.things.Polygon;
-import org.ams.physics.things.Thing;
 import org.ams.physics.things.ThingWithBody;
 import org.ams.physics.things.def.PolygonDef;
 import org.ams.physics.tools.BodyMover;
@@ -69,7 +68,7 @@ public class PhysicsPuzzle extends ApplicationAdapter {
         private TextureRegion textureRegion;
         private final Color outlineColor = new Color(Color.BLACK);
         private boolean varyingSpawnPosition, varyingSpawnColumn;
-        private float maxRowDifference;
+        private int maxTowerHeight;
 
         //
         private float outlineWidth;
@@ -97,9 +96,6 @@ public class PhysicsPuzzle extends ApplicationAdapter {
         // used to draw some visual effect when blocks are locked in
         private Array<PPPolygon> poppers;
 
-        // used for various effects
-        private Timer timer;
-
 
         // PrettyPaint related
         private OrthographicCamera camera;
@@ -114,6 +110,7 @@ public class PhysicsPuzzle extends ApplicationAdapter {
         // these two are for constructing the chainBody
         private Array<Vector2> wallVerticesForGroundBody;
         private Array<Integer> platformLevels;
+        private Array<Integer> potentialPlatformLevels;
 
 
         // debug stuff
@@ -132,7 +129,7 @@ public class PhysicsPuzzle extends ApplicationAdapter {
 
         private boolean isGameOver = false;
 
-        private long renderCount = 0;
+        public long renderCount = 0;
         private Callback gameOverCallback;
 
 
@@ -151,6 +148,8 @@ public class PhysicsPuzzle extends ApplicationAdapter {
 
         private BodyMover bodyMover;
         private InputMultiplexer inputMultiplexer;
+
+        private Timer timer = new Timer();
 
         @Override
         public void dispose() {
@@ -193,12 +192,14 @@ public class PhysicsPuzzle extends ApplicationAdapter {
 
         }
 
+        /** 1 to fit entire puzzle. Increase value to zoom in. */
         public void setZoom(float zoom) {
                 boolean change = zoom != this.zoom;
                 this.zoom = zoom;
                 if (change) lookAtPuzzle();
         }
 
+        /** 1 to fit entire puzzle. Increase value to zoom in. */
         public float getZoom() {
                 return zoom;
         }
@@ -275,6 +276,7 @@ public class PhysicsPuzzle extends ApplicationAdapter {
 
         /** Set up the game world according to the textureRegion and definition */
         private void initFromDefinition(TextureRegion textureRegion, PhysicsPuzzleDef def) {
+                if (def.columns <= 1) throw new IllegalArgumentException("There must be at least 2 columns");
 
                 // set values that define this particular game
                 columns = def.columns;
@@ -288,7 +290,7 @@ public class PhysicsPuzzle extends ApplicationAdapter {
 
                 varyingSpawnPosition = def.varyingSpawnPosition;
                 varyingSpawnColumn = def.varyingSpawnColumn;
-                this.maxRowDifference = def.maxRowDifference;
+                this.maxTowerHeight = def.maxTowerHeight;
 
                 this.textureRegion = textureRegion;
 
@@ -312,6 +314,8 @@ public class PhysicsPuzzle extends ApplicationAdapter {
 
                 // this block has to do with the ChainBody that is the physics of the "ground"
                 platformLevels = initPlatformLevels();
+                potentialPlatformLevels = initPlatformLevels();
+
                 wallVerticesForGroundBody = computeChainVerticesForFloorAndWalls();
                 updateChainBody();
 
@@ -320,7 +324,6 @@ public class PhysicsPuzzle extends ApplicationAdapter {
 
                 // prepare the popping effects
                 poppers = preparePopper();
-                timer = new Timer();
                 popSound = Gdx.audio.newSound(Gdx.files.internal("sounds/245645_unfa_cartoon-pop-clean.mp3"));
 
                 // if spawning when previous locked then we must initiate the first spawn
@@ -351,11 +354,10 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 finalPopper.setOpacity(1f);
                 finalPopper.setScale(1f);
 
-                final float interval = 0.02f;
+
                 final float duration = 0.5f;
 
-                timer.scheduleTask(new Timer.Task() {
-
+                timer.runOnRender(new Runnable() {
                         long begin = System.currentTimeMillis();
 
                         @Override
@@ -369,9 +371,11 @@ public class PhysicsPuzzle extends ApplicationAdapter {
 
                                 finalPopper.setOpacity(opacity);
                                 finalPopper.setScale(scale);
-
+                                if (opacity <= 0) {
+                                        timer.remove(this);
+                                }
                         }
-                }, interval, interval, (int) (duration / interval));
+                });
         }
 
         /** Prepare some polygons that are used for visual effect when blocks are locked in. */
@@ -543,26 +547,28 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 int col, row;
                 if (varyingSpawnColumn) {
 
-                        int lowestPlatform = platformLevels.first();
-                        for (int i = 1; i < platformLevels.size; i++) {
-                                if (platformLevels.get(i) < lowestPlatform) {
-                                        lowestPlatform = platformLevels.get(i);
+                        int lowestPlatform = potentialPlatformLevels.first();
+                        for (int i = 1; i < potentialPlatformLevels.size; i++) {
+                                if (potentialPlatformLevels.get(i) < lowestPlatform) {
+                                        lowestPlatform = potentialPlatformLevels.get(i);
                                 }
                         }
 
-                        int lowestPossibleRow = lowestPlatform + 1;
+                        int lowestPossibleRow = lowestPlatform;
+                        int highestAllowedRow = lowestPossibleRow + maxTowerHeight;
 
                         // select a random block that can be locked in
-
                         do {
                                 col = MathUtils.random(columns - 1);
-                                row = platformLevels.get(col) + 1;
-                        } while (row >= rows || row >= lowestPossibleRow + maxRowDifference);
-
+                                row = potentialPlatformLevels.get(col) + 1;
+                        } while (row >= rows || row > highestAllowedRow);
                         block = getBlock(row, col);
+
+
                         blocksLeft.removeValue(block, true);
 
                 } else {
+
                         block = blocksLeft.get(0);
                         col = getColumn(block);
                         blocksLeft.removeIndex(0);
@@ -600,12 +606,12 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 // prepare spawning animation
                 block.setScale(0);
 
-                final float interval = 0.02f;
                 final float duration = 0.5f;
 
                 final PPPolygon finalBlock = block;
-                timer.scheduleTask(new Timer.Task() {
 
+
+                timer.runOnRender(new Runnable() {
                         long begin = System.currentTimeMillis();
 
                         @Override
@@ -615,13 +621,16 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                                 float alpha = 0.001f * (now - begin) / duration;
                                 float scale = Interpolation.pow3Out.apply(alpha);
 
-                                if (scale > 1) scale = 1;
+                                if (scale > 1) {
+                                        timer.remove(this);
+                                }
 
                                 finalBlock.setScale(scale);
-
                         }
-                }, interval, interval, (int) (duration / interval));
+                });
 
+
+                potentialPlatformLevels.set(col, getRow(block));
                 bodyMover.setSelectedThing((ThingWithBody) block.getPhysicsThing());
         }
 
@@ -673,6 +682,8 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 // draw debug stuff
                 if (drawChainBody) drawChainBody();
                 if (drawOrigin) drawOrigin();
+
+                timer.step();
 
         }
 
@@ -996,7 +1007,7 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                         playPopSound();
                         popAnimation(block.getTexturePolygon().getPosition());
 
-                        activateNextBlock();
+                        if (interval <= 0) activateNextBlock();
                         checkIfWinAndCallback();
 
                 }
@@ -1188,8 +1199,8 @@ public class PhysicsPuzzle extends ApplicationAdapter {
                 boundingBox.merge(floor.getTexturePolygon().getBoundingRectangle());
 
                 // adjust the bounding box for zooming
-                float differenceY = boundingBox.height * (zoom - 1);
-                float differenceX = boundingBox.width * (zoom - 1);
+                float differenceY = boundingBox.height * (1f / zoom - 1);
+                float differenceX = boundingBox.width * (1f / zoom - 1);
 
                 boundingBox.height += differenceY;
                 boundingBox.width += differenceX;
@@ -1207,9 +1218,8 @@ public class PhysicsPuzzle extends ApplicationAdapter {
 
                 float horizontalZoom = boundingBox.width / camera.viewportWidth;
                 float verticalZoom = boundingBox.height / camera.viewportHeight;
-                float targetZoom = Math.max(horizontalZoom, verticalZoom);
 
-                camera.zoom = targetZoom;
+                camera.zoom = Math.max(horizontalZoom, verticalZoom);
 
                 camera.update();
         }

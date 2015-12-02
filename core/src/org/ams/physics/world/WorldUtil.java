@@ -29,17 +29,17 @@ package org.ams.physics.world;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.math.*;
-import com.badlogic.gdx.physics.box2d.Body;
-import com.badlogic.gdx.physics.box2d.CircleShape;
-import com.badlogic.gdx.physics.box2d.Fixture;
-import com.badlogic.gdx.physics.box2d.JointEdge;
-import com.badlogic.gdx.physics.box2d.PolygonShape;
-import com.badlogic.gdx.physics.box2d.Shape;
+import com.badlogic.gdx.physics.box2d.*;
 import com.badlogic.gdx.utils.Array;
+import org.ams.core.CoordinateHelper;
+import org.ams.core.Timer;
 import org.ams.physics.things.*;
 import org.ams.core.Util;
 import org.ams.physics.things.Circle;
 import org.ams.physics.things.Polygon;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Functions that can be useful when playing with box2d. These can be slow
@@ -292,6 +292,19 @@ public class WorldUtil {
                 return whithinDistance2.first();
         }
 
+        public static Set<Body> getIntersectingBodies(Rectangle rectangle, World world) {
+                final Set<Body> intersectingBodies = new HashSet<Body>();
+
+                world.QueryAABB(new QueryCallback() {
+                        @Override
+                        public boolean reportFixture(Fixture fixture) {
+                                intersectingBodies.add(fixture.getBody());
+                                return true;
+                        }
+                }, rectangle.x, rectangle.y, rectangle.x + rectangle.width, rectangle.y + rectangle.height);
+                return intersectingBodies;
+        }
+
 
         /**
          * @param things the things you wish to include in the search
@@ -308,7 +321,7 @@ public class WorldUtil {
 
                 for (Thing thing : things) {
                         if (found.contains(thing, true)) continue;
-
+                        if (filter != null && !filter.accept(thing)) continue;
 
                         if (thing instanceof JointThing) {
                                 JointThing joint = (JointThing) thing;
@@ -481,6 +494,76 @@ public class WorldUtil {
                 }
 
                 return alreadyFound;
+        }
+
+        public static void lookAt(final OrthographicCamera camera, final Timer timer, Array<Thing> things, float zoomMultiplier) {
+                if (things.size == 0) return;
+
+                Array<ThingWithBody> bodies = new Array<ThingWithBody>();
+                for (int i = 0; i < things.size; i++) {
+                        if (things.get(i).hasBody()) {
+                                ThingWithBody twb = (ThingWithBody) things.get(i);
+                                bodies.add(twb);
+                        }
+                }
+
+                Rectangle boundingBox = new Rectangle(bodies.first().getPhysicsBoundingBox());
+                for (int i = 1; i < bodies.size; i++) {
+                        boundingBox.merge(bodies.get(i).getPhysicsBoundingBox());
+                }
+
+                lookAt(camera, timer, boundingBox, zoomMultiplier);
+        }
+
+        public static void lookAt(final OrthographicCamera camera, final Timer timer, Rectangle box, float zoomMultiplier) {
+
+
+                final Vector2 targetPos = new Vector2();
+                box.getCenter(targetPos);
+                final float startZoom = camera.zoom;
+
+                float horisontalZoom = (box.width) / camera.viewportWidth;
+                float verticalZoom = (box.height) / camera.viewportHeight;
+
+                float _targetZoom = horisontalZoom > verticalZoom ? horisontalZoom : verticalZoom;
+                _targetZoom *= zoomMultiplier;
+                final float targetZoom = _targetZoom < 0.5f ? 0.5f : _targetZoom;
+
+                final Vector2 startPos = CoordinateHelper.getWorldCoordinates(camera, Gdx.graphics.getWidth() * 0.5f, Gdx.graphics.getHeight() * 0.5f);
+
+
+                Runnable runnable = new Runnable() {
+                        float linearAlpha = 0;
+
+                        Vector3 v = new Vector3();
+                        Vector3 v1 = new Vector3();
+
+                        float secondsToFinish = 0.7f;
+
+                        @Override
+                        public void run() {
+                                linearAlpha += Gdx.graphics.getDeltaTime() / secondsToFinish;
+                                if (linearAlpha > 1) {
+                                        linearAlpha = 1;
+                                        timer.remove(this);
+                                }
+
+                                float alpha = Interpolation.pow2Out.apply(linearAlpha);
+
+                                float zoom = startZoom * (1 - alpha) + targetZoom * alpha;
+                                camera.zoom = zoom;
+
+                                v.x = startPos.x * (1 - alpha) + targetPos.x * alpha;
+                                v.y = startPos.y * (1 - alpha) + targetPos.y * alpha;
+                                v.z = camera.position.z;
+                                camera.position.set(v);
+
+                                camera.update();
+
+                        }
+                };
+
+                timer.runOnRender(runnable);
         }
 
 }

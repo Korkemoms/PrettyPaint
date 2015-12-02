@@ -95,6 +95,11 @@ public class PPCircle implements PPWithBody {
                 return this;
         }
 
+        @Override
+        public String getType() {
+                return "PPCircle";
+        }
+
         private void updateVertices() {
                 verticesMustBeUpdated = false;
 

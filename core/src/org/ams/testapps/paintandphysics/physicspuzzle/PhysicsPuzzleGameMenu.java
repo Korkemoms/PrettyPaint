@@ -48,6 +48,7 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import org.ams.core.Timer;
 import org.ams.core.Util;
 import org.ams.prettypaint.PrettyPolygonBatch;
 import org.ams.prettypaint.TexturePolygon;
@@ -61,6 +62,11 @@ import java.util.Map;
  * A game menu for {@link PhysicsPuzzle }.
  */
 public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
+
+        private static final int default_row_count = 4;
+        private static final int default_column_count = 4;
+        private static final int default_interval = -1;
+
 
         private PhysicsPuzzle physicsPuzzle; // the game, a new one is created for each "game"
 
@@ -95,11 +101,15 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
         private static final int MAIN_MENU = 0, SETTINGS_MENU = 1, IMAGE_MENU = 2, IN_GAME = 3;
         private int currentScreen = MAIN_MENU, lastScreen;
 
+
+
+        private Timer timer;
+
         @Override
         public void create() {
+                timer = new Timer();
 
-                boolean verbose = true;
-                Gdx.app.setLogLevel(verbose ? Application.LOG_DEBUG : Application.LOG_ERROR);
+                Gdx.app.setLogLevel(Application.LOG_ERROR);
 
 
                 Gdx.app.log("PhysicsPuzzleGameMenu", "Creating application PhysicsPuzzleGameMenu");
@@ -232,9 +242,9 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 String name = puzzleNames.get(thumbnailRegion).replace("thumbnails/", "");
 
                 // some game settings
-                int rows = preferences.getInteger("Rows", 7);
-                int columns = preferences.getInteger("Columns", 7);
-                float interval = preferences.getFloat("Interval", -1);
+                int rows = preferences.getInteger("Rows", default_row_count);
+                int columns = preferences.getInteger("Columns", default_column_count);
+                float interval = preferences.getFloat("Interval", default_interval);
 
 
                 startGame(currentPuzzleTextureRegion, name, rows, columns, interval);
@@ -268,7 +278,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                         }
                 });
 
-                physicsPuzzle.setZoom(1.25f);
+                physicsPuzzle.setZoom(0.75f);
                 physicsPuzzle.setPosition(0, 0.5f);
 
                 resumeGame();
@@ -277,7 +287,6 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
 
         /** Clear other ui and show just a new game button. */
         private void showGameOverUi() {
-
                 onResize = new Runnable() {
                         @Override
                         public void run() {
@@ -285,13 +294,11 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                         }
                 };
 
-                physicsPuzzle.setZoom(2.2f);
-                physicsPuzzle.setPosition(0, -0.95f);
+                showImageSelectionMenu(Align.bottom, Color.BLACK);
 
-
-
-                showImageSelectionMenu(Align.bottom,Color.BLACK);
-
+                float zoom = (stage.getHeight() - computePreferredImageHeight() - computePreferredPadding()) / stage.getHeight();
+                physicsPuzzle.setZoom(zoom * 0.9f);
+                physicsPuzzle.setPosition(0, -0.9f);
 
         }
 
@@ -316,6 +323,8 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
          * Changes background.
          */
         private void resumeGame() {
+                stage.clear();
+
                 lastScreen = currentScreen;
                 currentScreen = IN_GAME;
 
@@ -409,8 +418,8 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
         private Table createCustomizationComponents() {
 
                 Gdx.app.log("PhysicsPuzzleGameMenu", "Creating customization components");
-                int minRows = 1, maxRows = 50;
-                int minColumns = 1, maxColumns = 50;
+                int minRows = 2, maxRows = 20;
+                int minColumns = 2, maxColumns = 20;
                 float minInterval = 0.2f, maxInterval = 7f, intervalStep = 0.1f;
 
                 boolean tallScreen = Gdx.graphics.getHeight() > Gdx.graphics.getWidth();
@@ -428,7 +437,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 if (tallScreen) cell.row();
 
                 final Slider rowSlider = new Slider(minRows, maxRows, 1, false, skin);
-                rowSlider.setValue(preferences.getInteger("Rows", 7));
+                rowSlider.setValue(preferences.getInteger("Rows", default_row_count));
                 controlsTable.add(rowSlider).padBottom(preferredPadding).width(buttonWidth);
 
                 final Label rowCounter = new Label(String.valueOf(rowSlider.getValue()), skin);
@@ -451,7 +460,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
 
 
                 final Slider columnSlider = new Slider(minColumns, maxColumns, 1, false, skin);
-                columnSlider.setValue(preferences.getInteger("Columns", 7));
+                columnSlider.setValue(preferences.getInteger("Columns", default_column_count));
                 controlsTable.add(columnSlider).padBottom(preferredPadding).width(buttonWidth);
 
                 final Label columnCounter = new Label(String.valueOf(columnSlider.getValue()), skin);
@@ -474,7 +483,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
 
 
                 final Slider intervalSlider = new Slider(minInterval, maxInterval, intervalStep, false, skin);
-                intervalSlider.setValue(preferences.getFloat("Interval", 1.5f));
+                intervalSlider.setValue(preferences.getFloat("Interval", default_interval));
                 intervalSlider.setVisible(intervalCheckBox.isChecked());
 
                 final Label intervalCounter = new Label(Util.safeSubstring(intervalSlider.getValue(), 4) + " s", skin);
@@ -533,6 +542,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                                 preferences.putInteger("Rows", rows);
                                 preferences.putInteger("Columns", columns);
                                 preferences.putFloat("Interval", interval);
+                                preferences.flush();
                         }
                 });
 
@@ -559,6 +569,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 return textureRegion;
         }
 
+        
         /** Get the TextureRegion that the image is drawing. */
         private TextureRegion getTextureRegion(Image image) {
                 TextureRegionDrawable drawable = (TextureRegionDrawable) selectedThumbnail.getDrawable();
@@ -648,7 +659,13 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 playButton.addListener(new ClickListener() {
                         @Override
                         public void clicked(InputEvent event, float x, float y) {
-                                showImageSelectionMenu(Align.center,Color.WHITE);
+                                showImageSelectionMenu(Align.center, Color.WHITE);
+                                onResize = new Runnable() {
+                                        @Override
+                                        public void run() {
+                                                showImageSelectionMenu(Align.center, Color.WHITE);
+                                        }
+                                };
                         }
                 });
 
@@ -680,17 +697,12 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
         }
 
         /** Clear other menus. Show a scroll pane with thumbnails. Also some buttons. */
-        private void showImageSelectionMenu(final int align,final Color buttonColor) {
+        private void showImageSelectionMenu(final int align, final Color buttonColor) {
                 lastScreen = currentScreen;
                 currentScreen = IMAGE_MENU;
 
                 Gdx.app.log("PhysicsPuzzleGameMenu", "Showing image selection menu");
-                onResize = new Runnable() {
-                        @Override
-                        public void run() {
-                                showImageSelectionMenu(align,buttonColor);
-                        }
-                };
+
 
                 selectedThumbnail = null;
                 Table imageSelectionMenu = createImageSelectionComponents(computePreferredImageHeight(), align != Align.bottom);
@@ -711,7 +723,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 if (align == Align.bottom) {
                         y = preferredImageHeight * 0.5f + preferredImageHeight * 0.02f;
                 } else if (align == Align.center) {
-                        y = Gdx.graphics.getHeight() * 0.5f;
+                        y = stage.getHeight() * 0.5f;
                 }
 
 
@@ -812,15 +824,16 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 imageScroller.setScrollingDisabled(false, true);
                 imageScroller.setScrollBarPositions(scrollBarBottom, true);
 
-
-                Gdx.app.postRunnable(new Runnable() {
+                // scroll to random position
+                //
+                timer.runAfterNRender(new Runnable() {
                         @Override
                         public void run() {
                                 Image image = puzzleImages.random();
                                 Rectangle bounds = getActorBounds(image, new Rectangle());
                                 imageScroller.scrollTo(bounds.x, bounds.y, bounds.width, bounds.height, true, true);
                         }
-                });
+                }, 2);
 
 
                 Table imageSelectionMenu = new Table();
@@ -915,6 +928,8 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
 
                 stage.act();
                 stage.draw();
+
+                timer.step();
         }
 
 
@@ -937,6 +952,7 @@ public class PhysicsPuzzleGameMenu extends ApplicationAdapter {
                 textureAtlas = null;
                 preferences = null;
                 currentPuzzleTextureRegion = null;
+                timer = null;
 
                 Gdx.app.log("PhysicsPuzzleGameMenu", "Finished disposing resources");
         }

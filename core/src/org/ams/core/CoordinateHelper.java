@@ -36,7 +36,7 @@ import com.badlogic.gdx.math.Vector2;
 public class CoordinateHelper {
 
 
-        public static Vector2 getWorldCoordinates(OrthographicCamera camera, int screenX, int screenY) {
+        public static Vector2 getWorldCoordinates(OrthographicCamera camera, float screenX, float screenY) {
 
                 float halfWidth = Gdx.graphics.getWidth() * 0.5f;
                 float halfHeight = Gdx.graphics.getHeight() * 0.5f;
@@ -75,6 +75,4 @@ public class CoordinateHelper {
                 result.set(screenX, screenY);
                 return result;
         }
-
-
 }

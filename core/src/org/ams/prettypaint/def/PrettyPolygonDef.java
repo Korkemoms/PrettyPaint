@@ -26,6 +26,7 @@
 
 package org.ams.prettypaint.def;
 
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 
@@ -41,5 +42,6 @@ public abstract class PrettyPolygonDef {
         public float scale = 1;
         public float opacity = 1;
         public boolean visible = true;
+        public final Color color = new Color();
 
 }

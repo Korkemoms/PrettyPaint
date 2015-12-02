@@ -1,1 +1,0 @@
-Skin published here: http://www.badlogicgames.com/forum/viewtopic.php?f=22&t=8533

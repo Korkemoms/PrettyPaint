@@ -39,6 +39,7 @@ import org.ams.core.poly2tri.geometry.polygon.PolygonPoint;
 import org.ams.core.poly2tri.triangulation.delaunay.DelaunayTriangle;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 
@@ -428,6 +429,19 @@ public class Util {
                 String s = o.toString();
                 int y = s.length();
                 return s.substring(0, n < y ? n : y);
+        }
+
+        public static String getDecimals(float f, int max) {
+                String s = String.valueOf(f);
+
+                String[] split = s.split("\\.");
+
+                if (split.length == 0) return "";
+                return safeSubstring(split[1], max);
+        }
+
+        public static float roundToNearestN(float value, float n){
+                return n * (Math.round(value / n));
         }
 
         /**

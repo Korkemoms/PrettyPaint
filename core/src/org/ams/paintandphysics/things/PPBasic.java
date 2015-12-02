@@ -83,6 +83,11 @@ class PPBasic implements PPThing {
                 this(null, null);
         }
 
+        @Override
+        public String getType() {
+                return "PPBasic";
+        }
+
         /**
          * Initialize from definition, no {@link com.badlogic.gdx.graphics.g2d.TextureRegion} is set
          * for the {@link TexturePolygon} when using this constructor.

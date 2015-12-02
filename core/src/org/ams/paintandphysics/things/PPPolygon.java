@@ -117,6 +117,11 @@ public class PPPolygon implements PPWithBody {
                 return this;
         }
 
+        @Override
+        public String getType() {
+                return "PPPolygon";
+        }
+
         /**
          * Set the position of the painting polygons and the physics thing if it has a body.
          *
@@ -205,6 +210,9 @@ public class PPPolygon implements PPWithBody {
         @Override
         public PPPolygon setPhysicsThing(Thing physicsThing) {
                 basic.setPhysicsThing(physicsThing);
+
+                if (physicsThing != null) physicsThing.setUserData(this);
+
                 return this;
         }
 }

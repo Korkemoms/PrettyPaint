@@ -26,6 +26,7 @@
 
 package org.ams.prettypaint.def;
 
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Vector2;
 import org.ams.prettypaint.TexturePolygon;
 
@@ -34,18 +35,18 @@ import org.ams.prettypaint.TexturePolygon;
  *
  * @author Andreas
  */
-public class TexturePolygonDef extends PrettyPolygonDef{
+public class TexturePolygonDef extends PrettyPolygonDef {
         public final Vector2 textureTranslation = new Vector2();
         public float textureAngle = 0;
         public String textureRegionName;
         public float textureScale = 0.01f;
-        public boolean drawCullingRectangles = false;
 
-        public TexturePolygonDef(){
-
+        public TexturePolygonDef() {
+                color.set(Color.WHITE);
         }
 
-        public TexturePolygonDef(TexturePolygon texturePolygon){
+
+        public TexturePolygonDef(TexturePolygon texturePolygon) {
 
                 textureAngle = texturePolygon.getAngle();
                 textureRegionName = texturePolygon.getTextureRegionName();
@@ -54,6 +55,7 @@ public class TexturePolygonDef extends PrettyPolygonDef{
 
                 angle = texturePolygon.getAngle();
                 opacity = texturePolygon.getOpacity();
+                color.set(texturePolygon.getColor());
                 position.set(texturePolygon.getPosition());
                 scale = texturePolygon.getScale();
                 vertices.addAll(texturePolygon.getVertices());

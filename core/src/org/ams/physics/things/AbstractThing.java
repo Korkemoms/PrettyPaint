@@ -56,7 +56,7 @@ public abstract class AbstractThing implements Thing {
 
         protected void initFromDefinition(ThingDef def){
                 definitionFromInitialization = def;
-                userData = def.userData;
+                //userData = def.userData;
         }
 
         @Override

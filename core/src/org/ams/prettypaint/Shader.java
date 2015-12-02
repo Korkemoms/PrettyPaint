@@ -116,7 +116,7 @@ class Shader {
         protected static final String textureFragmentBranch
                 = "vec2 pos         = v_region_pos+mod(v_pos_in_region, v_region_size)    ;\n"
                 + "gl_FragColor     = texture2D(u_texture,pos)                     ;\n"
-                + "gl_FragColor[3] *= v_color[3]                                   ;\n";
+                + "gl_FragColor *= v_color                                         ;\n";
 
 
         protected static final String vertexShader

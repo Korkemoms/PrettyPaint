@@ -40,11 +40,15 @@ public class OutlinePolygonDef extends PrettyPolygonDef {
         public boolean drawInside = true;
         public boolean drawOutside = true;
         public float weight = 1;
-        public final Color color = new Color(Color.BLACK);
+
         public boolean closedPolygon = true;
         public boolean drawBoundingBoxes = false;
         public boolean drawTriangleStrips = false;
         public boolean drawLineFromFirstToLast = false;
+
+        public OutlinePolygonDef() {
+                color.set(Color.BLACK);
+        }
 
         public OutlinePolygonDef(OutlinePolygon outlinePolygon) {
 

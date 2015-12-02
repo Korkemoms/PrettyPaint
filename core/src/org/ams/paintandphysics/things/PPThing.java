@@ -62,4 +62,6 @@ public interface PPThing {
 
         Object getUserData();
 
+        String getType();
+
 }

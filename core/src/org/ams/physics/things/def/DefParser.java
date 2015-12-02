@@ -267,7 +267,7 @@ public class DefParser {
 
 
                 thingDef.id = thing.getID();
-                thingDef.userData = thing.getUserData();
+                //thingDef.userData = thing.getUserData();
 
         }
 

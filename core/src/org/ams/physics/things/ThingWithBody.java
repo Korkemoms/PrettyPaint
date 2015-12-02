@@ -69,7 +69,11 @@ public interface ThingWithBody extends Thing {
          */
         Vector2 getInterpolatedPosition();
 
-        public Vector2 getPosition();
+        Vector2 getPosition();
 
-        public float getAngle();
+        float getAngle();
+
+        void setFriction(float friction);
+
+        float getFriction();
 }

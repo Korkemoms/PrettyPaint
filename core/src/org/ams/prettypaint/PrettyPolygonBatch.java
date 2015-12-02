@@ -288,7 +288,7 @@ public class PrettyPolygonBatch {
         // TODO Comment
         protected void drawTexture(PolygonRegion region, float pos_x, float pos_y, float width, float height,
                                    float scaleX, float scaleY, float rotation, float texture_pos_x, float texture_pos_y, float tex_trans_x,
-                                   float tex_trans_y, float region_width, float region_height, float opacity) {
+                                   float tex_trans_y, float region_width, float region_height, float packedColor) {
                 if (!isStarted) throw new RuntimeException("You must call begin() before calling this method.");
 
                 final float[] regionVertices = region.getVertices();
@@ -328,7 +328,7 @@ public class PrettyPolygonBatch {
 
                         data[dataCount++] = cos * fx - sin * fy + worldOriginX;
                         data[dataCount++] = sin * fx + cos * fy + worldOriginY;
-                        data[dataCount++] = opacity;
+                        data[dataCount++] = packedColor;
 
                         data[dataCount++] = textureCoordinates[i] + tex_trans_x;
                         data[dataCount++] = textureCoordinates[i + 1] + tex_trans_y;
@@ -347,7 +347,7 @@ public class PrettyPolygonBatch {
 
                         data[dataCount++] = cos * fx - sin * fy + worldOriginX;
                         data[dataCount++] = sin * fx + cos * fy + worldOriginY;
-                        data[dataCount++] = opacity;
+                        data[dataCount++] = packedColor;
 
                         data[dataCount++] = textureCoordinates[i] + tex_trans_x;
                         data[dataCount++] = textureCoordinates[i + 1] + tex_trans_y;
@@ -369,7 +369,7 @@ public class PrettyPolygonBatch {
 
                         data[dataCount++] = cos * fx - sin * fy + worldOriginX;
                         data[dataCount++] = sin * fx + cos * fy + worldOriginY;
-                        data[dataCount++] = opacity;
+                        data[dataCount++] = packedColor;
 
                         data[dataCount++] = textureCoordinates[i] + tex_trans_x;
                         data[dataCount++] = textureCoordinates[i + 1] + tex_trans_y;

@@ -43,7 +43,7 @@ public class PhysicsPuzzleDef {
         public boolean varyingSpawnPosition = true;
         public boolean varyingSpawnColumn = true;
 
-        public float maxRowDifference = 2f;
+        public int maxTowerHeight = 2;
 
 
 
