@@ -104,6 +104,10 @@ public class CardHouseWithGUI extends ApplicationAdapter {
 
         }
 
+        public CardHouse getCardHouse() {
+                return cardHouse;
+        }
+
         /**
          * Dispose all resources and nullify references.
          * Must be called when this object is no longer used.

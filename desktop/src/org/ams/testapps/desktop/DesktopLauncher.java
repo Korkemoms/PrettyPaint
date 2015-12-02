@@ -9,11 +9,11 @@ import org.ams.testapps.paintandphysics.cardhouse.CardHouseGameMenu;
 public class DesktopLauncher {
         public static void main(String[] arg) {
                 LwjglApplicationConfiguration config = new LwjglApplicationConfiguration();
-                config.width = 1280;
-                config.height = 720;
+                config.width = 1136;
+                config.height = 640;
 
 
-                packTextures();
+                // packTextures();
 
 
                 new LwjglApplication(new CardHouseGameMenu(), config);
@@ -42,6 +42,6 @@ public class DesktopLauncher {
                 settings.combineSubdirectories = true;
 
 
-                TexturePacker.process(settings, "ui\\custom\\dark-hdpi", "ui\\custom", "custom.atlas");
+                TexturePacker.process(settings, "ui\\custom\\custom ui textures", "ui\\custom", "custom.atlas");
         }
 }

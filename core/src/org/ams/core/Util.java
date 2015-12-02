@@ -26,6 +26,7 @@
 
 package org.ams.core;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Intersector;
 import com.badlogic.gdx.math.Vector2;
@@ -122,7 +123,11 @@ public class Util {
 
         public static float getTouchRadius(float zoom) {
                 float f = 0.5f * zoom;
-                return (f < 0.05f ? 0.05f : f) * 0.4f;
+                f = (f < 0.05f ? 0.05f : f) * 0.4f;
+
+                f *= Math.pow(Gdx.graphics.getDensity(), 0.25);
+
+                return f;
         }
 
         public static Array<Triangle> makeTriangles(Array<Vector2> polygon, Array<Array<Vector2>> holes) {
@@ -440,7 +445,7 @@ public class Util {
                 return safeSubstring(split[1], max);
         }
 
-        public static float roundToNearestN(float value, float n){
+        public static float roundToNearestN(float value, float n) {
                 return n * (Math.round(value / n));
         }
 
