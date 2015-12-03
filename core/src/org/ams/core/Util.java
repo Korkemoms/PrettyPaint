@@ -122,11 +122,8 @@ public class Util {
         }
 
         public static float getTouchRadius(float zoom) {
-                float f = 0.5f * zoom;
-                f = (f < 0.05f ? 0.05f : f) * 0.4f;
-
-                f *= Math.pow(Gdx.graphics.getDensity(), 0.25);
-
+                float f = 0.5f * (float) Math.sqrt(zoom);
+                f *= (float) Math.pow(Gdx.graphics.getDensity(), 0.25);
                 return f;
         }
 

@@ -30,18 +30,16 @@ import com.badlogic.gdx.*;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
-import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.scenes.scene2d.*;
+import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
-import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import org.ams.core.SceneUtil;
-import org.ams.core.Util;
 
 import java.io.File;
 import java.io.FileFilter;
@@ -73,10 +71,6 @@ public class CardHouseGameMenu extends ApplicationAdapter {
 
         private Runnable onResize; // used to lay out menus after resize
 
-        private Image circle;
-        private InputProcessor touchListener;
-        private boolean drawTouch = false;
-
         /**
          * Menu and background for the card house game. When a new game is started
          * the menu is hidden and a new instance of {@link CardHouseWithGUI} is
@@ -98,7 +92,7 @@ public class CardHouseGameMenu extends ApplicationAdapter {
 
                 // ui stuff
                 ScreenViewport sv = new ScreenViewport();
-                float ui_scale = (float) Math.abs(Math.log(Gdx.graphics.getDensity())) * 2.4f;
+                float ui_scale = getUIScale();
                 sv.setUnitsPerPixel(1f / ui_scale);
 
                 // extended class to set colors of buttons
@@ -140,78 +134,14 @@ public class CardHouseGameMenu extends ApplicationAdapter {
 
                 showMainMenu();
 
-                //setDrawTouch(true);
 
         }
 
-        /** Whether to draw the touches. For debugging. */
-        public void setDrawTouch(boolean drawTouch) {
-                this.drawTouch = drawTouch;
-
-                // remove old stuff
-                inputMultiplexer.removeProcessor(touchListener);
-                stage.getActors().removeValue(circle, true);
-
-
-                if (drawTouch) {
-                        // prepare image
-                        TextureRegion textureRegion = skin.getRegion("circle");
-                        circle = new Image(textureRegion);
-                        circle.setTouchable(Touchable.disabled);
-
-                        // listener for moving the circle
-                        touchListener = new InputAdapter() {
-                                Vector2 touch = new Vector2();
-                                Vector2 tmp = new Vector2();
-
-                                void updateSizeAndPos(int screenX, int screenY) {
-                                        touch = stage.screenToStageCoordinates(tmp.set(screenX, screenY));
-
-                                        CardHouse cardHouse = null;
-                                        if (cardHouseWithGUI != null) cardHouse = cardHouseWithGUI.getCardHouse();
-
-                                        float worldZoom = 1;
-                                        if (cardHouse != null)
-                                                worldZoom = cardHouseWithGUI.getCardHouse().getCamera().zoom;
-
-                                        float touchRadius = Util.getTouchRadius(worldZoom) * 100;
-                                        circle.setSize(touchRadius * 2, touchRadius * 2);
-                                        circle.setPosition(touch.x, touch.y, Align.center);
-                                }
-
-                                @Override
-                                public boolean touchDown(int screenX, int screenY, int pointer, int button) {
-
-                                        circle.setVisible(true);
-                                        if (!stage.getActors().contains(circle, true))
-                                                stage.addActor(circle);
-
-                                        updateSizeAndPos(screenX, screenY);
-                                        return false;
-                                }
-
-                                @Override
-                                public boolean touchDragged(int screenX, int screenY, int pointer) {
-                                        circle.setVisible(true);
-                                        updateSizeAndPos(screenX, screenY);
-                                        return false;
-                                }
-
-                                @Override
-                                public boolean touchUp(int screenX, int screenY, int pointer, int button) {
-                                        circle.setVisible(false);
-                                        return false;
-                                }
-                        };
-
-                        inputMultiplexer.addProcessor(0, touchListener);
-                }
+        private float getUIScale() {
+                return (float) Math.abs(Math.log(Gdx.graphics.getDensity())) * 2.4f;
         }
 
-        /** Whether the touches are drawn. For debugging. */
-        public boolean isDrawingTouch() {
-                return drawTouch;
-        }
+
 
         /**
          * Hides the menu and creates a new {@link CardHouseWithGUI} that receives input

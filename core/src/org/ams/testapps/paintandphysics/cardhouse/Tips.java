@@ -46,6 +46,7 @@ import org.ams.core.Timer;
 import org.ams.prettypaint.OutlinePolygon;
 import org.ams.prettypaint.PrettyPolygonBatch;
 
+/** Displays tips with an optional arrow that can point at stuff. */
 public class Tips {
 
         private boolean debug = false;
@@ -73,6 +74,12 @@ public class Tips {
         private Window window;
 
 
+        /**
+         * Displays tips with an optional arrow that can point at stuff.
+         *
+         * @param key identifier for the preferences class
+         *            that is used to remember completed tips.
+         */
         public Tips(String key, Stage stage, Skin skin) {
                 if (debug) Gdx.app.setLogLevel(Application.LOG_DEBUG);
                 if (debug) debug("Creating a new Tips instance with key" + key + ".");
@@ -355,7 +362,7 @@ public class Tips {
                 window.setBackground(new TextureRegionDrawable(skin.getRegion("gray")));
                 window.add(mainTable).center();
 
-                window.setSize(mainTable.getPrefWidth(),mainTable.getPrefHeight());
+                window.setSize(mainTable.getPrefWidth(), mainTable.getPrefHeight());
 
 
                 // center on stage

@@ -32,7 +32,9 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.math.*;
+import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.BodyDef;
 import com.badlogic.gdx.physics.box2d.ChainShape;
@@ -101,6 +103,13 @@ public class CardHouse extends ApplicationAdapter {
                         return o instanceof ThingWithBody;
                 }
         };
+
+
+        // variables used for drawing the touches
+        private boolean drawTouch = false;
+        private InputProcessor touchListener;
+        private final Vector2 touchPos = new Vector2();
+        private float touchRadius = 1;
 
         /**
          * Card House game. It can be started as an independent application(for debugging) or
@@ -253,9 +262,54 @@ public class CardHouse extends ApplicationAdapter {
                         loadGame(def.asJson);
                 }
 
-
                 positionCamera();
+        }
 
+
+        /** Whether to draw the touches. For debugging. */
+        public void setDrawTouch(boolean drawTouch) {
+                this.drawTouch = drawTouch;
+
+                // remove old stuff
+                inputMultiplexer.removeProcessor(touchListener);
+
+                if (drawTouch) {
+                        if (shapeRenderer == null) {
+                                shapeRenderer = new ShapeRenderer();
+                                shapeRenderer.setAutoShapeType(true);
+                        }
+
+                        // listener for moving the circle
+                        touchListener = new InputAdapter() {
+                                void updateSizeAndPos(int screenX, int screenY) {
+                                                touchPos.set(CoordinateHelper.getWorldCoordinates(
+                                                        camera,  screenX, screenY));
+
+                                                touchRadius = Util.getTouchRadius(camera.zoom);
+
+                                }
+
+                                @Override
+                                public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+                                        updateSizeAndPos(screenX, screenY);
+                                        return false;
+                                }
+
+                                @Override
+                                public boolean touchDragged(int screenX, int screenY, int pointer) {
+                                        updateSizeAndPos(screenX, screenY);
+                                        return false;
+                                }
+
+                        };
+
+                        inputMultiplexer.addProcessor(0, touchListener);
+                }
+        }
+
+        /** Whether the touches are drawn. For debugging. */
+        public boolean isDrawingTouch() {
+                return drawTouch;
         }
 
 
@@ -411,10 +465,20 @@ public class CardHouse extends ApplicationAdapter {
                 world.draw(polygonBatch);
                 polygonBatch.end();
 
-                // draw turn circle
+
                 shapeRenderer.begin();
                 shapeRenderer.setProjectionMatrix(camera.combined);
+
+                // draw turn circle
                 cardMover.render(shapeRenderer);
+
+                // draw touches
+                if (drawTouch && Gdx.input.isButtonPressed(0)) {
+                        shapeRenderer.set(ShapeRenderer.ShapeType.Line);
+                        shapeRenderer.setColor(Color.RED);
+                        shapeRenderer.circle(touchPos.x, touchPos.y, touchRadius, 20);
+                }
+
                 shapeRenderer.end();
 
                 timer.step();

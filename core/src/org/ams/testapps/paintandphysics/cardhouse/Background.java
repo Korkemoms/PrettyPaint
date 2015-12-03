@@ -37,18 +37,21 @@ import com.badlogic.gdx.utils.Array;
 import org.ams.prettypaint.PrettyPolygonBatch;
 import org.ams.prettypaint.TexturePolygon;
 
-
+/** For drawing seamless textures. */
 public class Background {
-
         private boolean debug = false;
-
 
         private OrthographicCamera backgroundCamera;
         private TexturePolygon background;
+
+        // it can have its own batch because it uses a texture that
+        // is not from atlas, therefore the number of flushes would remain the same
+        // if it shared batch with other classes
         private PrettyPolygonBatch polygonBatch;
 
         private Color color = new Color(Color.WHITE);
 
+        /** For drawing seamless textures. */
         public Background() {
                 if (debug) Gdx.app.setLogLevel(Application.LOG_DEBUG);
                 if (debug) debug("New instance.");
@@ -57,22 +60,12 @@ public class Background {
                 backgroundCamera = new OrthographicCamera();
         }
 
-        public void setColor(Color color) {
-                this.color = color;
-                if (background != null)
-                        background.setColor(color);
-        }
-
-        public Color getColor() {
-                return color;
-        }
 
         private void debug(String text) {
                 if (debug) Gdx.app.log("Background", text);
         }
 
-
-        /** Hardcoded because it's hard to find files with GWT. */
+        /** Hardcoded because it's hard to find the files with GWT. */
         private Array<String> getAvailableBackgrounds(String match) {
                 Array<String> backgrounds = new Array<String>();
 
@@ -83,6 +76,18 @@ public class Background {
                 if (path.contains(match)) backgrounds.add(path);
 
                 return backgrounds;
+        }
+
+        /** Color the texture. */
+        public void setColor(Color color) {
+                this.color = color;
+                if (background != null)
+                        background.setColor(color);
+        }
+
+        /** Color the texture. */
+        public Color getColor() {
+                return color;
         }
 
         public void render() {
@@ -104,6 +109,8 @@ public class Background {
                 if (polygonBatch != null) polygonBatch.dispose();
                 polygonBatch = null;
 
+                // seamless texture from atlas doesn't work well with prettypaint
+                // on many mobile devices
                 if (background != null) background.getTextureRegion().getTexture().dispose();
 
                 background = null;
@@ -148,6 +155,9 @@ public class Background {
 
 
                 background = new TexturePolygon();
+
+                // seamless texture from atlas doesn't work well with prettypaint
+                // on many mobile devices
                 background.setTextureRegion(new TextureRegion(texture));
                 background.setColor(color);
 
